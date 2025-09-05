@@ -1,76 +1,65 @@
-# Assinador
+# Cobrador Automático WA
 
-Aplicativo desktop em Python/PySide6 para enviar formulários e validar assinaturas eletrônicas de clientes.
+Gerenciador de clientes com lembretes automáticos via WhatsApp. O projeto utiliza [Electron](https://www.electronjs.org/), [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) e [node-cron](https://www.npmjs.com/package/node-cron) para oferecer uma interface simples e multiplataforma de cobrança.
 
 ## Funcionalidades
+- Conexão de múltiplas contas de WhatsApp.
+- Cadastro de clientes com telefone, data de compra e data de vencimento.
+- Verificação automática se o número do cliente está disponível no WhatsApp.
+- Envio de lembretes de cobrança de forma manual ou agendada.
+- Envio de mensagens em massa para clientes selecionados.
+- Controle de contas vendidas com cálculo automático de receitas. (Gráficos em manutenção.)
+- Persistência de dados local com *electron-store*.
+- Exibição da quantidade total de clientes e dos resultados filtrados na lista.
 
-- Cadastro de construtoras e vínculo com clientes.
-- Filtro de clientes por construtora e status de assinatura.
-- Envio automático de contratos em PDF via WhatsApp.
-- Controle de status de assinatura (pendente ou assinado).
-- Sincronização com WhatsApp via QR Code.
-- Comandos no chat como `/assinar` e `/status` para automatizar o fluxo.
-- Validação manual com indicador de revisão e registro de histórico.
-- Temas dinâmicos para construtoras (MRV e Direcional).
-- Tema escuro para melhor visibilidade.
+## Requisitos
+- [Node.js](https://nodejs.org/) 18 ou superior.
+- NPM ou Yarn.
 
-## Estrutura
-
-```
-assinar-desktop/
-├─ .env.example
-├─ requirements.txt
-├─ make.ps1
-├─ assets/
-│  ├─ logos/
-│  └─ themes/
-├─ app/
-│  ├─ main.py
-│  ├─ ui/
-│  │  ├─ window.py
-│  │  └─ tray.py
-│  ├─ core/
-│  │  ├─ config.py
-│  │  ├─ db.py
-│  │  ├─ models.py
-│  │  └─ theming.py
-│  ├─ services/
-│  │  ├─ whatsapp.py
-│  │  ├─ govbr.py
-│  │  ├─ icpbr.py
-│  │  ├─ validator.py
-│  │  └─ tunnel.py
-│  ├─ server/
-│  │  ├─ http.py
-│  │  ├─ webhooks_wa.py
-│  │  ├─ callbacks_govbr.py
-│  │  └─ callbacks_icpbr.py
-│  └─ flows/
-│     ├─ first_contact.py
-│     ├─ send_form.py
-│     └─ validate_and_notify.py
-├─ build/
-│  ├─ assinar.spec
-│  └─ icon.ico
-└─ tests/
+## Instalação
+```bash
+npm install
 ```
 
-## Execução
+## Uso
+1. Inicie o aplicativo em modo desenvolvimento:
+   ```bash
+   npm start
+   ```
+2. No primeiro acesso de cada conta de WhatsApp, será exibido um QR Code para pareamento.
+3. Cadastre clientes e defina os horários desejados para cobrança automática.
 
-```powershell
-# Executar a aplicação
-./make.ps1 run
+## Build
+Gere binários para distribuição com:
+```bash
+npm run pack   # build sem empacotamento
+npm run dist   # executáveis para a plataforma
+```
+Os artefatos são gerados em `dist_electron/`.
 
-# Gerar executável
-./make.ps1 build
+## Atualização
+Gere um executável de atualização que substitui apenas os arquivos de código e preserva os dados do cliente. Existem duas formas:
+
+- Pelo aplicativo: vá ao menu **Configurações** e clique em **Gerar Atualizador**.
+- Pela linha de comando:
+
+  ```bash
+  npm run gerar-atualizador
+  ```
+O binário criado em `atualizador/atualizacoes/` deve ser enviado ao cliente. Ao executá-lo, basta informar a pasta da instalação antiga. O diretório `dados/` não é sobrescrito e o arquivo `versao.txt` é atualizado.
+
+## Estrutura do Projeto
+- `main.js` – processo principal do Electron e orquestração da aplicação.
+- `whatsapp.js` – gestor de múltiplas sessões do WhatsApp.
+- `cronJobs.js` – agendamentos e lógica de cobrança automática.
+- `renderer/` – interface gráfica.
+- `utils.js` – funções auxiliares.
+
+## Testes
+Os utilitários possuem testes básicos executados com o runner nativo do Node.js:
+```bash
+npm test
 ```
 
-## Validação manual e histórico
-
-- O dashboard possui um campo indicando se o documento foi revisado e confirmado.
-- Ao receber o formulário assinado, anexe-o ao cadastro e marque o status como "assinado" ou "validado".
-- Todas as ações são registradas para facilitar auditorias futuras.
-
-## Autor
-
-Pexe – [Instagram: David.devloli](https://instagram.com/David.devloli)
+## Licença
+Distribuído sob a licença ISC. Consulte o arquivo `package.json` para detalhes.
