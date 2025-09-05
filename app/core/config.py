@@ -16,6 +16,7 @@ class Settings:
     whatsapp_phone_id: Optional[str] = None
     whatsapp_verify_token: Optional[str] = None
     whatsapp_api_url: str = "https://graph.facebook.com/v17.0"
+    whatsapp_app_secret: Optional[str] = None
 
     govbr_auth_url: str = "https://cas.staging.iti.br/oauth2.0"
     govbr_client_id: Optional[str] = None
@@ -46,6 +47,8 @@ def load_settings(env_file: str = ".env") -> Settings:
         whatsapp_api_url=
             os.getenv("WA_API_URL")
             or os.getenv("WHATSAPP_API_URL", "https://graph.facebook.com/v17.0"),
+        whatsapp_app_secret=
+            os.getenv("WA_APP_SECRET") or os.getenv("WHATSAPP_APP_SECRET"),
         govbr_auth_url=os.getenv(
             "GOVBR_AUTH_URL", "https://cas.staging.iti.br/oauth2.0"
         ),
