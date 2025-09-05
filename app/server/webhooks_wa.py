@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import load_settings
 from app.core.db import get_session
 from app.core.models import Conversation, AuditLog
+from app.services.whatsapp import send_message
 
 
 router = APIRouter(prefix="/webhooks/wa")
@@ -74,6 +75,7 @@ async def receive_whatsapp(
             value = change.get("value", {})
             for message in value.get("messages", []):
                 wa_id = message.get("from")
+                text = message.get("text", {}).get("body", "").strip().lower()
                 conv = _first(
                     session.query(Conversation).filter_by(wa_id=wa_id).all()
                 )
@@ -81,7 +83,32 @@ async def receive_whatsapp(
                     conv = Conversation(wa_id=wa_id, status="novo")
                     session.add(conv)
                     session.flush()
-                conv.status = "engajado"
+                if text == "/assinar":
+                    conv.status = "form_enviado"
+                    session.add(
+                        AuditLog(
+                            actor="wa_command",
+                            action="assinar",
+                            payload=wa_id,
+                        )
+                    )
+                    if settings.whatsapp_token and settings.whatsapp_phone_id:
+                        send_message(
+                            wa_id,
+                            "Formulário enviado. Use /status para acompanhar.",
+                        )
+                elif text == "/status":
+                    session.add(
+                        AuditLog(
+                            actor="wa_command",
+                            action="status",
+                            payload=conv.status,
+                        )
+                    )
+                    if settings.whatsapp_token and settings.whatsapp_phone_id:
+                        send_message(wa_id, f"Status atual: {conv.status}")
+                else:
+                    conv.status = "engajado"
             for status in value.get("statuses", []):
                 wa_id = status.get("recipient_id")
                 new_status = status.get("status")

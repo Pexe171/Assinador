@@ -3,6 +3,9 @@
 import requests
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
+
+import qrcode
 
 from app.core.config import load_settings
 
@@ -54,3 +57,30 @@ def send_document(phone: str, media_id: str, caption: str = "") -> requests.Resp
         "document": {"id": media_id, "caption": caption},
     }
     return requests.post(url, headers=headers, json=payload, timeout=30)
+
+
+def send_form(phone: str, file_path: str, caption: str = "") -> Optional[requests.Response]:
+    """Envia um formulário em PDF ao cliente.
+
+    Autor: Pexe (Instagram: David.devloli)
+    """
+    if not (settings.whatsapp_token and settings.whatsapp_phone_id):
+        return None
+    media_id = upload_media(file_path)
+    if not media_id:
+        return None
+    return send_document(phone, media_id, caption)
+
+
+def generate_qr_code(phone: str, message: str = "") -> Path:
+    """Gera um QR Code para iniciar conversa no WhatsApp Web.
+
+    Autor: Pexe (Instagram: David.devloli)
+    """
+    link = f"https://wa.me/{phone}"
+    if message:
+        link += f"?text={quote(message)}"
+    img = qrcode.make(link)
+    output = Path(f"wa_{phone}.png")
+    img.save(output)
+    return output
