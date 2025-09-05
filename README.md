@@ -2,6 +2,13 @@
 
 Aplicativo desktop em Python/PySide6 para enviar formulários e validar assinaturas eletrônicas de clientes.
 
+## Funcionalidades
+
+- Cadastro de construtoras e vínculo com clientes.
+- Filtro de clientes por construtora e status de assinatura.
+- Envio automático de contratos em PDF via WhatsApp.
+- Controle de status de assinatura (pendente ou assinado).
+
 ## Estrutura
 
 ```
