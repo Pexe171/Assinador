@@ -11,6 +11,7 @@ Aplicativo desktop em Python/PySide6 para enviar formulários e validar assinatu
 - Sincronização com WhatsApp via QR Code.
 - Comandos no chat como `/assinar` e `/status` para automatizar o fluxo.
 - Validação manual com indicador de revisão e registro de histórico.
+- Temas dinâmicos para construtoras (MRV e Direcional).
 
 ## Estrutura
 
