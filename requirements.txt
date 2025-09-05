@@ -1,0 +1,7 @@
+PySide6
+FastAPI
+uvicorn
+SQLAlchemy
+requests
+python-dotenv
+pydantic
