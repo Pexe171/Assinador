@@ -32,16 +32,19 @@ def apply_theme(widget: QWidget, theme: dict[str, Any]) -> None:
     style = f"""
         QWidget {{
             background-color: {theme.get('fundo', '#FFFFFF')};
+            color: {theme.get('texto', '#000000')};
             font-family: '{theme.get('fonte', 'Inter')}', sans-serif;
         }}
 
         QPushButton, QLineEdit {{
             border-radius: {theme.get('raio_borda', 0)}px;
+            color: {theme.get('texto', '#000000')};
         }}
 
         QFrame {{
             background-color: {theme.get('card', '#FFFFFF')};
             border-radius: {theme.get('raio_borda', 0)}px;
+            color: {theme.get('texto', '#000000')};
         }}
     """
 
