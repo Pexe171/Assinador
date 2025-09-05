@@ -2,8 +2,8 @@
 
 # Autor: Pexe – Instagram: @David.devloli
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QPixmap, QIcon, QColor
 from PySide6.QtWidgets import (
     QFrame,
     QLabel,
@@ -12,6 +12,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QFileDialog,
     QStyle,
+    QGraphicsDropShadowEffect,
+    QGraphicsOpacityEffect,
+    QGraphicsColorizeEffect,
 )
 
 from app.core.models import Customer, Document, AuditLog
@@ -27,6 +30,14 @@ class CustomerCard(QFrame):
         self.cliente = cliente
         self.session = session
         self.setFrameShape(QFrame.StyledPanel)
+
+        # efeito de sombra para animação de elevação
+        self._shadow = QGraphicsDropShadowEffect(self)
+        self._shadow.setBlurRadius(5)
+        self._shadow.setOffset(0, 0)
+        self._shadow.setColor(QColor(0, 0, 0, 80))
+        self.setGraphicsEffect(self._shadow)
+        self._hover_anim: QPropertyAnimation | None = None
 
         theme_name = cliente.company.name.lower()
         self.theme = load_theme(theme_name)
@@ -89,6 +100,7 @@ class CustomerCard(QFrame):
             self.btn_resend,
         ):
             actions.addWidget(btn)
+            self._apply_press_animation(btn)
         footer.addLayout(actions)
         layout.addLayout(footer)
 
@@ -123,6 +135,7 @@ class CustomerCard(QFrame):
         else:
             self.status_icon.setPixmap(icon.pixmap(16, 16))
         self.status_text.setText(text)
+        self._animate_status_change(status)
 
     def update_highlight(self, status: str) -> None:
         """Destaca o botão com a próxima ação."""
@@ -202,4 +215,79 @@ class CustomerCard(QFrame):
             self.session.commit()
             self.update_status_badge("validado")
             self.update_highlight("validado")
+
+    # --- Animações -----------------------------------------------------------------
+    def enterEvent(self, event) -> None:  # type: ignore[override]
+        """Eleva o cartão ao passar o mouse."""
+        if self._hover_anim:
+            self._hover_anim.stop()
+        self._hover_anim = QPropertyAnimation(self._shadow, b"blurRadius")
+        self._hover_anim.setStartValue(self._shadow.blurRadius())
+        self._hover_anim.setEndValue(15)
+        self._hover_anim.setDuration(150)
+        self._hover_anim.setEasingCurve(QEasingCurve.InOutQuad)
+        self._hover_anim.start()
+        return super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:  # type: ignore[override]
+        """Retorna o cartão ao normal ao sair do hover."""
+        if self._hover_anim:
+            self._hover_anim.stop()
+        self._hover_anim = QPropertyAnimation(self._shadow, b"blurRadius")
+        self._hover_anim.setStartValue(self._shadow.blurRadius())
+        self._hover_anim.setEndValue(5)
+        self._hover_anim.setDuration(150)
+        self._hover_anim.setEasingCurve(QEasingCurve.InOutQuad)
+        self._hover_anim.start()
+        return super().leaveEvent(event)
+
+    def _apply_press_animation(self, button: QPushButton) -> None:
+        """Aplica uma animação de pressão ao botão."""
+
+        effect = QGraphicsOpacityEffect(button)
+        button.setGraphicsEffect(effect)
+
+        def on_pressed() -> None:
+            anim = QPropertyAnimation(effect, b"opacity")
+            anim.setDuration(100)
+            anim.setStartValue(1)
+            anim.setEndValue(0.6)
+            anim.start(QPropertyAnimation.DeleteWhenStopped)
+
+        def on_released() -> None:
+            anim = QPropertyAnimation(effect, b"opacity")
+            anim.setDuration(100)
+            anim.setStartValue(effect.opacity())
+            anim.setEndValue(1)
+            anim.start(QPropertyAnimation.DeleteWhenStopped)
+
+        button.pressed.connect(on_pressed)
+        button.released.connect(on_released)
+
+    def _animate_status_change(self, status: str) -> None:
+        """Anima a mudança de status com *fade* e brilho verde."""
+
+        opacity = QGraphicsOpacityEffect(self.status_badge)
+        self.status_badge.setGraphicsEffect(opacity)
+        fade = QPropertyAnimation(opacity, b"opacity")
+        fade.setDuration(300)
+        fade.setStartValue(0)
+        fade.setEndValue(1)
+
+        def after_fade() -> None:
+            self.status_badge.setGraphicsEffect(None)
+            if status in {"assinado", "validado"}:
+                glow = QGraphicsColorizeEffect()
+                glow.setColor(QColor("#28a745"))
+                self.status_badge.setGraphicsEffect(glow)
+                anim = QPropertyAnimation(glow, b"strength")
+                anim.setDuration(600)
+                anim.setStartValue(0)
+                anim.setKeyValueAt(0.5, 1)
+                anim.setEndValue(0)
+                anim.finished.connect(lambda: self.status_badge.setGraphicsEffect(None))
+                anim.start(QPropertyAnimation.DeleteWhenStopped)
+
+        fade.finished.connect(after_fade)
+        fade.start(QPropertyAnimation.DeleteWhenStopped)
 
