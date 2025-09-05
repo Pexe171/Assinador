@@ -23,5 +23,6 @@ def test_relationships_and_defaults():
     assert cliente.company.name == "MRV"
     assert cliente.documents[0].status == "pendente"
     assert cliente.documents[0].file_path == "contrato.pdf"
+    assert cliente.documents[0].reviewed is False
 
     session.close()

@@ -10,6 +10,7 @@ Aplicativo desktop em Python/PySide6 para enviar formulários e validar assinatu
 - Controle de status de assinatura (pendente ou assinado).
 - Sincronização com WhatsApp via QR Code.
 - Comandos no chat como `/assinar` e `/status` para automatizar o fluxo.
+- Validação manual com indicador de revisão e registro de histórico.
 
 ## Estrutura
 
@@ -61,6 +62,12 @@ assinar-desktop/
 # Gerar executável
 ./make.ps1 build
 ```
+
+## Validação manual e histórico
+
+- O dashboard possui um campo indicando se o documento foi revisado e confirmado.
+- Ao receber o formulário assinado, anexe-o ao cadastro e marque o status como "assinado" ou "validado".
+- Todas as ações são registradas para facilitar auditorias futuras.
 
 ## Autor
 

@@ -27,7 +27,7 @@ class Dashboard(QWidget):
         layout.addWidget(self.filtro_empresa)
 
         self.filtro_status = QComboBox()
-        self.filtro_status.addItems(["Todos", "Pendente", "Assinado"])
+        self.filtro_status.addItems(["Todos", "Pendente", "Assinado", "Validado"])
         layout.addWidget(self.filtro_status)
 
         self.lista = QListWidget()
