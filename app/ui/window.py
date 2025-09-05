@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Assinador")
         self.dashboard = Dashboard()
         self.setCentralWidget(self.dashboard)
-        self._theme_name = "mrv"
+        self._theme_name = "dark"
         self.set_theme(self._theme_name)
 
         config_action = self.menuBar().addAction("Configurações")

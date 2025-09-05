@@ -3,6 +3,7 @@
   "cor_primaria": "#00A859",
   "fundo": "#F5F5F5",
   "card": "#FFFFFF",
+  "texto": "#000000",
   "raio_borda": 8,
   "logo": "assets/logos/mrv.png",
   "fonte": "Inter"
