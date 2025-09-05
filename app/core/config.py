@@ -21,6 +21,8 @@ class Settings:
     govbr_redirect_uri: str = "http://localhost:8000/callbacks/govbr"
 
     tunnel_provider: str = "cloudflared"
+    integraicp_token: Optional[str] = None
+    validator_env: str = "producao"
 
 
 def load_settings(env_file: str = ".env") -> Settings:
@@ -35,4 +37,6 @@ def load_settings(env_file: str = ".env") -> Settings:
         govbr_client_secret=os.getenv("GOVBR_CLIENT_SECRET"),
         govbr_redirect_uri=os.getenv("GOVBR_REDIRECT_URI", "http://localhost:8000/callbacks/govbr"),
         tunnel_provider=os.getenv("TUNNEL_PROVIDER", "cloudflared"),
+        integraicp_token=os.getenv("INTEGRAICP_TOKEN"),
+        validator_env=os.getenv("VALIDATOR_ENV", "producao"),
     )
