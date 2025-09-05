@@ -6,10 +6,12 @@ from app.ui.window import MainWindow
 from app.ui.tray import TrayIcon
 from app.server.http import run_server
 from app.services.tunnel import start_tunnel, stop_tunnel, get_public_url
+from app.core.init_db import init_db
 
 
 def main() -> None:
     """Inicializa a aplicação gráfica e serviços auxiliares."""
+    init_db()
     app = QApplication([])
 
     # Inicia servidor HTTP para webhooks e callbacks

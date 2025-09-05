@@ -1,7 +1,12 @@
 """Modelos do banco de dados."""
 
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
-from sqlalchemy import Integer, String, Text
+from sqlalchemy.orm import (
+    declarative_base,
+    Mapped,
+    mapped_column,
+    relationship,
+)
+from sqlalchemy import Integer, String, Text, ForeignKey
 
 Base = declarative_base()
 
@@ -11,6 +16,9 @@ class Company(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    customers: Mapped[list["Customer"]] = relationship(
+        "Customer", back_populates="company", cascade="all, delete-orphan"
+    )
 
 
 class Customer(Base):
@@ -19,6 +27,21 @@ class Customer(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str] = mapped_column(String, nullable=False)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False)
+    company: Mapped["Company"] = relationship("Company", back_populates="customers")
+    documents: Mapped[list["Document"]] = relationship(
+        "Document", back_populates="customer", cascade="all, delete-orphan"
+    )
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), nullable=False)
+    file_path: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, default="pendente", nullable=False)
+    customer: Mapped["Customer"] = relationship("Customer", back_populates="documents")
 
 
 class Conversation(Base):
