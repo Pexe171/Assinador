@@ -1,6 +1,7 @@
 """Envio de link e tutorial para o cliente."""
 
 from app.services import whatsapp
+from app.ui.tray import TrayIcon
 
 
 def send_form_link(phone: str, url: str) -> None:
@@ -13,3 +14,5 @@ def send_form_pdf(phone: str, file_path: str, caption: str = "") -> None:
     media_id = whatsapp.upload_media(file_path)
     if media_id:
         whatsapp.send_document(phone, media_id, caption)
+        destinatario = caption or phone
+        TrayIcon.notify_global(f"PDF enviado para {destinatario}")
