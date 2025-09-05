@@ -1,4 +1,9 @@
 {
   "nome": "MRV",
-  "cor_primaria": "#00A859"
+  "cor_primaria": "#00A859",
+  "fundo": "#F5F5F5",
+  "card": "#FFFFFF",
+  "raio_borda": 8,
+  "logo": "assets/logos/mrv.png",
+  "fonte": "Inter"
 }
