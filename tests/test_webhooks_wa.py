@@ -73,3 +73,73 @@ def test_receive_message_and_status() -> None:
     assert log is not None and log.actor == "wa_webhook"
     session.close()
 
+
+def test_command_flow() -> None:
+    client = TestClient(app)
+
+    payload = {
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "messages": [
+                                {"from": "999", "text": {"body": "/assinar"}}
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    body = json.dumps(payload).encode()
+    signature = "sha256=" + hmac.new(
+        b"appsecret", body, hashlib.sha256
+    ).hexdigest()
+
+    resp = client.post(
+        "/webhooks/wa", data=body, headers={"X-Hub-Signature-256": signature}
+    )
+    assert resp.status_code == 200
+
+    session = SessionLocal()
+    conv = session.query(Conversation).filter_by(wa_id="999").first()
+    assert conv is not None and conv.status == "form_enviado"
+    log = session.query(AuditLog).filter_by(action="assinar").first()
+    assert log is not None and log.actor == "wa_command"
+    session.close()
+
+    payload = {
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "messages": [
+                                {"from": "999", "text": {"body": "/status"}}
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    body = json.dumps(payload).encode()
+    signature = "sha256=" + hmac.new(
+        b"appsecret", body, hashlib.sha256
+    ).hexdigest()
+
+    resp = client.post(
+        "/webhooks/wa", data=body, headers={"X-Hub-Signature-256": signature}
+    )
+    assert resp.status_code == 200
+
+    session = SessionLocal()
+    conv = session.query(Conversation).filter_by(wa_id="999").first()
+    assert conv is not None and conv.status == "form_enviado"
+    log = session.query(AuditLog).filter_by(action="status").first()
+    assert log is not None and log.payload == "form_enviado"
+    session.close()
+

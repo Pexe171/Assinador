@@ -8,6 +8,8 @@ Aplicativo desktop em Python/PySide6 para enviar formulários e validar assinatu
 - Filtro de clientes por construtora e status de assinatura.
 - Envio automático de contratos em PDF via WhatsApp.
 - Controle de status de assinatura (pendente ou assinado).
+- Sincronização com WhatsApp via QR Code.
+- Comandos no chat como `/assinar` e `/status` para automatizar o fluxo.
 
 ## Estrutura
 
