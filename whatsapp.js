@@ -78,6 +78,14 @@ const clientsManager = {
 
         try {
             await waClient.initialize();
+
+            // Garante compatibilidade com scripts que utilizam "dragEvent"
+            // evitando erros de referência no contexto do WhatsApp Web.
+            await waClient.pupPage.evaluate(() => {
+                if (typeof dragEvent === 'undefined' && typeof DragEvent !== 'undefined') {
+                    window.dragEvent = DragEvent;
+                }
+            }).catch(() => {});
         } catch (error) {
             await this.destroyClient(accountId, false);
         } finally {
