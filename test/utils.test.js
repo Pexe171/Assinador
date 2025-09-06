@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { formatMessage, getDaysUntilDue, formatDate } = require('../utils');
+const { formatMessage, getDaysUntilDue, formatDate, renderTemplate } = require('../utils');
 
 test('formatMessage substitui placeholders', () => {
   const template = 'Olá {nome}!';
@@ -34,4 +34,35 @@ test('getDaysUntilDue calcula datas relativas', () => {
 
 test('getDaysUntilDue identifica data inválida', () => {
   assert.equal(getDaysUntilDue('abc'), 'Data inválida');
+});
+
+test('renderTemplate mescla cliente e vars', () => {
+  const cliente = {
+    id: '1',
+    nome: 'João',
+    cpf: '123',
+    sexo: 'Masculino',
+    empreendimento: 'Emp',
+    construtora: 'MRV',
+    carta: 'FGTS',
+    criadoEm: '',
+    atualizadoEm: ''
+  };
+  const texto = renderTemplate('Olá {{nome}} - {{taxa}}', cliente, { taxa: '5%' });
+  assert.equal(texto.startsWith('Olá João - 5%'), true);
+});
+
+test('renderTemplate valida obrigatorios', () => {
+  const cliente = {
+    id: '1', nome: 'João', cpf: '123', sexo: 'Masculino', empreendimento: 'Emp', construtora: 'MRV', carta: 'FGTS', criadoEm: '', atualizadoEm: ''
+  };
+  assert.throws(() => renderTemplate('Valor {{valor}}', cliente, {}, ['valor']));
+});
+
+test('renderTemplate normaliza carta SBTE para SBPE', () => {
+  const cliente = {
+    id: '2', nome: 'Ana', cpf: '321', sexo: 'Feminino', empreendimento: 'Emp', construtora: 'Direcional', carta: 'SBTE', criadoEm: '', atualizadoEm: ''
+  };
+  const texto = renderTemplate('Carta {{carta}}', cliente, {});
+  assert.equal(texto, 'Carta SBPE');
 });
