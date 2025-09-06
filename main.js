@@ -9,6 +9,18 @@ const schema = {
     whatsappAccounts: {
         type: 'array',
         default: [{ id: 'default', name: 'Conta Principal' }]
+    },
+    mrvClients: {
+        type: 'array',
+        default: []
+    },
+    direcionalClients: {
+        type: 'array',
+        default: []
+    },
+    olaCasaNovaClients: {
+        type: 'array',
+        default: []
     }
 };
 
@@ -91,4 +103,57 @@ ipcMain.on('request-qr-code', (event, accountId) => {
 ipcMain.handle('disconnect-whatsapp', async (event, accountId) => {
     await clientsManager.destroyClient(accountId, false);
     return { success: true };
+});
+
+// --- Handlers de Clientes por Construtora ---
+const companyKeys = {
+    mrv: 'mrvClients',
+    direcional: 'direcionalClients',
+    ola: 'olaCasaNovaClients'
+};
+
+ipcMain.handle('get-clients', (event, company) => {
+    const key = companyKeys[company];
+    if (!key) return [];
+    return store.get(key) || [];
+});
+
+ipcMain.handle('add-client', (event, company, data) => {
+    const key = companyKeys[company];
+    if (!key) return null;
+    const clients = store.get(key) || [];
+    const newClient = {
+        id: `cli-${Date.now()}`,
+        nome: data.nome,
+        cpf: data.cpf,
+        sexo: data.sexo,
+        empreendimento: data.empreendimento,
+        carta: data.carta,
+        ficha: data.ficha,
+        mensagens: []
+    };
+    clients.push(newClient);
+    store.set(key, clients);
+    return newClient;
+});
+
+ipcMain.handle('update-client', (event, company, id, data) => {
+    const key = companyKeys[company];
+    if (!key) return { success: false };
+    const clients = store.get(key) || [];
+    const idx = clients.findIndex(c => c.id === id);
+    if (idx === -1) return { success: false };
+    clients[idx] = { ...clients[idx], ...data };
+    store.set(key, clients);
+    return { success: true };
+});
+
+ipcMain.handle('delete-client', (event, company, id) => {
+    const key = companyKeys[company];
+    if (!key) return { success: false };
+    let clients = store.get(key) || [];
+    const initialLength = clients.length;
+    clients = clients.filter(c => c.id !== id);
+    store.set(key, clients);
+    return { success: clients.length < initialLength };
 });
