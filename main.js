@@ -38,6 +38,29 @@ function createWindow() {
         icon: path.join(__dirname, 'assets/icon.png')
     });
 
+    // Ativa DevTools e redireciona logs para facilitar depuração
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+
+    const forwardLog = (level, args) => {
+        if (mainWindow?.webContents) {
+            const message = args
+                .map(a => (a && a.stack) ? a.stack : a)
+                .join(' ');
+            mainWindow.webContents.send('debug-log', { level, message });
+        }
+    };
+
+    ['log', 'warn', 'error'].forEach(level => {
+        const original = console[level];
+        console[level] = (...args) => {
+            original.apply(console, args);
+            forwardLog(level, args);
+        };
+    });
+
+    process.on('uncaughtException', err => console.error('uncaughtException', err));
+    process.on('unhandledRejection', reason => console.error('unhandledRejection', reason));
+
     // Inicia o gestor de contas WhatsApp
     clientsManager.start(mainWindow, store);
 
