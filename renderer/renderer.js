@@ -5,6 +5,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAddWhatsAppAccount = document.getElementById('btn-add-whatsapp-account');
     const modalOverlay = document.getElementById('custom-modal-overlay');
 
+    // Recebe logs do processo principal e exibe no console do DevTools
+    window.electronAPI.onDebugLog(({ level, message }) => {
+        const log = console[level] || console.log;
+        log(`[MAIN] ${message}`);
+    });
+
     /* Navegação principal */
     const navLinks = document.querySelectorAll('.navigation a');
     const viewsMap = {

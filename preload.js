@@ -14,5 +14,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   addClient: (company, data) => ipcRenderer.invoke('add-client', company, data),
   updateClient: (company, id, data) => ipcRenderer.invoke('update-client', company, id, data),
   deleteClient: (company, id) => ipcRenderer.invoke('delete-client', company, id),
-  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
+  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
+  onDebugLog: (callback) => ipcRenderer.on('debug-log', (_e, data) => callback(data))
 });
