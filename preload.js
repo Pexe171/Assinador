@@ -10,5 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   disconnectWhatsApp: (accountId) => ipcRenderer.invoke('disconnect-whatsapp', accountId),
   onWhatsAppStateChange: (callback) => ipcRenderer.on('whatsapp-state-change', (_event, accounts) => callback(accounts)),
   onWhatsAppQRCode: (callback) => ipcRenderer.on('whatsapp-qr-code', (_event, accountId, qr) => callback(accountId, qr)),
+  getClients: (company) => ipcRenderer.invoke('get-clients', company),
+  addClient: (company, data) => ipcRenderer.invoke('add-client', company, data),
+  updateClient: (company, id, data) => ipcRenderer.invoke('update-client', company, id, data),
+  deleteClient: (company, id) => ipcRenderer.invoke('delete-client', company, id),
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
 });

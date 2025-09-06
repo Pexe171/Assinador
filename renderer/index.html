@@ -40,7 +40,23 @@
                         <button class="sub-tab" data-target="mrv-mensagens">Mensagens/Configurações</button>
                     </div>
                     <div id="mrv-clientes" class="sub-tab-content">
-                        <p class="description">Clientes MRV.</p>
+                        <div class="client-controls">
+                            <input type="text" id="mrv-filter-nome" placeholder="Nome">
+                            <input type="text" id="mrv-filter-cpf" placeholder="CPF">
+                            <input type="text" id="mrv-filter-empreendimento" placeholder="Empreendimento">
+                            <select id="mrv-filter-carta">
+                                <option value="">Carta</option>
+                                <option value="SBPE">SBPE</option>
+                                <option value="FGTS">FGTS</option>
+                            </select>
+                            <select id="mrv-filter-sexo">
+                                <option value="">Sexo</option>
+                                <option value="M">Masculino</option>
+                                <option value="F">Feminino</option>
+                            </select>
+                            <button id="mrv-btn-add-client" class="btn-primary-alt"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                        <div id="mrv-clients-list" class="clients-list"></div>
                     </div>
                     <div id="mrv-mensagens" class="sub-tab-content hidden">
                         <p class="description">Mensagens e configurações MRV.</p>
@@ -56,7 +72,23 @@
                         <button class="sub-tab" data-target="direcional-mensagens">Mensagens/Configurações</button>
                     </div>
                     <div id="direcional-clientes" class="sub-tab-content">
-                        <p class="description">Clientes Direcional.</p>
+                        <div class="client-controls">
+                            <input type="text" id="direcional-filter-nome" placeholder="Nome">
+                            <input type="text" id="direcional-filter-cpf" placeholder="CPF">
+                            <input type="text" id="direcional-filter-empreendimento" placeholder="Empreendimento">
+                            <select id="direcional-filter-carta">
+                                <option value="">Carta</option>
+                                <option value="SBPE">SBPE</option>
+                                <option value="FGTS">FGTS</option>
+                            </select>
+                            <select id="direcional-filter-sexo">
+                                <option value="">Sexo</option>
+                                <option value="M">Masculino</option>
+                                <option value="F">Feminino</option>
+                            </select>
+                            <button id="direcional-btn-add-client" class="btn-primary-alt"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                        <div id="direcional-clients-list" class="clients-list"></div>
                     </div>
                     <div id="direcional-mensagens" class="sub-tab-content hidden">
                         <p class="description">Mensagens e configurações Direcional.</p>
@@ -72,7 +104,23 @@
                         <button class="sub-tab" data-target="ola-mensagens">Mensagens/Configurações</button>
                     </div>
                     <div id="ola-clientes" class="sub-tab-content">
-                        <p class="description">Clientes Olá Casa Nova.</p>
+                        <div class="client-controls">
+                            <input type="text" id="ola-filter-nome" placeholder="Nome">
+                            <input type="text" id="ola-filter-cpf" placeholder="CPF">
+                            <input type="text" id="ola-filter-empreendimento" placeholder="Empreendimento">
+                            <select id="ola-filter-carta">
+                                <option value="">Carta</option>
+                                <option value="SBPE">SBPE</option>
+                                <option value="FGTS">FGTS</option>
+                            </select>
+                            <select id="ola-filter-sexo">
+                                <option value="">Sexo</option>
+                                <option value="M">Masculino</option>
+                                <option value="F">Feminino</option>
+                            </select>
+                            <button id="ola-btn-add-client" class="btn-primary-alt"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                        <div id="ola-clients-list" class="clients-list"></div>
                     </div>
                     <div id="ola-mensagens" class="sub-tab-content hidden">
                         <p class="description">Mensagens e configurações Olá Casa Nova.</p>
