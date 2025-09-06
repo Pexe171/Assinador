@@ -68,7 +68,7 @@ const clientsManager = {
 
         console.log(`[WhatsAppManager] A iniciar cliente para a conta: ${accountId}`);
         clientState.isInitializing = true;
-        this.updateAccountState(accountId, 'initializing');
+        this.updateAccountState(accountId, 'reconnecting');
 
         const waClient = new Client({
             authStrategy: new LocalAuth({ 
@@ -86,7 +86,7 @@ const clientsManager = {
 
         waClient.on('qr', (qr) => {
             console.log(`[WhatsAppManager-${accountId}] QR Code recebido.`);
-            this.updateAccountState(accountId, 'qr');
+            this.updateAccountState(accountId, 'reconnecting');
             QRCode.toDataURL(qr).then(url => {
                 this.mainWindow.webContents.send('whatsapp-qr-code', accountId, url);
             });
@@ -95,7 +95,7 @@ const clientsManager = {
         waClient.on('ready', async () => {
             console.log(`[WhatsAppManager-${accountId}] Cliente está pronto!`);
             clientState.isReady = true;
-            this.updateAccountState(accountId, 'ready');
+            this.updateAccountState(accountId, 'connected');
             this.revalidateChats(accountId); // Força a validação ao conectar
         });
 

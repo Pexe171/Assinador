@@ -2,9 +2,8 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
-const { setupCronJobs, checkAndSendReminders } = require('./cronJobs');
 const { clientsManager } = require('./whatsapp');
-const { formatMessage, formatDate } = require('./utils');
+const { formatMessage } = require('./utils');
 const { execFile } = require('child_process');
 
 // Schema da base de dados local
@@ -20,10 +19,6 @@ const schema = {
     serviceAccounts: {
         type: 'array',
         default: []
-    },
-    scheduleSettings: {
-        type: 'object',
-        default: { time1: '10:00', time2: '16:00' }
     },
     salesGoal: {
         type: 'number',
@@ -56,8 +51,6 @@ function createWindow() {
 // Eventos do ciclo de vida da aplicação
 app.whenReady().then(() => {
     createWindow();
-    const currentScheduleSettings = store.get('scheduleSettings');
-    setupCronJobs(store, currentScheduleSettings, clientsManager); 
 });
 
 app.on('window-all-closed', async () => {
@@ -215,11 +208,7 @@ ipcMain.handle('delete-client', async (event, clientId) => {
     return { success: true, message: 'Cliente excluído com sucesso!' };
 });
 
-// --- Handlers de Ações (Cobrança e Envio em Massa) ---
-ipcMain.handle('force-charge-due-clients', async () => {
-    return await checkAndSendReminders(store, "Manual", clientsManager);
-});
-
+// --- Handlers de Ações (Envio em Massa) ---
 ipcMain.handle('send-bulk-message', async (event, accountId, messageText) => {
     const readyClients = clientsManager.getReadyClients();
     if (!readyClients.has(accountId)) {
@@ -276,15 +265,6 @@ ipcMain.handle('save-sales-goal', async (_event, goal) => {
     store.set('salesGoal', Number(goal));
     return { success: true };
 });
-
-// --- Handlers de Configurações ---
-ipcMain.handle('save-schedule-settings', async (event, settings) => {
-    store.set('scheduleSettings', settings);
-    setupCronJobs(store, settings, clientsManager);
-    return { success: true };
-});
-
-ipcMain.handle('get-schedule-settings', async () => store.get('scheduleSettings'));
 
 // --- Atualizador ---
 ipcMain.handle('generate-updater', async () => {

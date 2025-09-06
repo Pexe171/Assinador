@@ -1,12 +1,11 @@
-# Cobrador Automático WA
+# Gestor de Contas WA
 
-Gerenciador de clientes com lembretes automáticos via WhatsApp. O projeto utiliza [Electron](https://www.electronjs.org/), [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) e [node-cron](https://www.npmjs.com/package/node-cron) para oferecer uma interface simples e multiplataforma de cobrança.
+Gerenciador de clientes e contas de WhatsApp com envio de mensagens. O projeto utiliza [Electron](https://www.electronjs.org/) e [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) para oferecer uma interface simples e multiplataforma.
 
 ## Funcionalidades
 - Conexão de múltiplas contas de WhatsApp.
 - Cadastro de clientes com telefone, data de compra e data de vencimento.
 - Verificação automática se o número do cliente está disponível no WhatsApp.
-- Envio de lembretes de cobrança de forma manual ou agendada.
 - Envio de mensagens em massa para clientes selecionados.
 - Controle de contas vendidas com cálculo automático de receitas. (Gráficos em manutenção.)
 - Persistência de dados local com *electron-store*.
@@ -27,7 +26,7 @@ npm install
    npm start
    ```
 2. No primeiro acesso de cada conta de WhatsApp, será exibido um QR Code para pareamento.
-3. Cadastre clientes e defina os horários desejados para cobrança automática.
+3. Cadastre clientes conforme necessário.
 
 ## Build
 Gere binários para distribuição com:
@@ -51,7 +50,6 @@ O binário criado em `atualizador/atualizacoes/` deve ser enviado ao cliente. Ao
 ## Estrutura do Projeto
 - `main.js` – processo principal do Electron e orquestração da aplicação.
 - `whatsapp.js` – gestor de múltiplas sessões do WhatsApp.
-- `cronJobs.js` – agendamentos e lógica de cobrança automática.
 - `renderer/` – interface gráfica.
 - `utils.js` – funções auxiliares.
 
