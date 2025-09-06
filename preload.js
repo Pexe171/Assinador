@@ -24,7 +24,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onClientsUpdated: (callback) => ipcRenderer.on('clients-updated', () => callback()),
 
   // Funções de Mensagens
-  forceChargeDueClients: () => ipcRenderer.invoke('force-charge-due-clients'),
   sendBulkMessage: (accountId, messageText) => ipcRenderer.invoke('send-bulk-message', accountId, messageText),
 
   // Contas de Serviço
@@ -35,10 +34,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Meta de Vendas
   getSalesGoal: () => ipcRenderer.invoke('get-sales-goal'),
   saveSalesGoal: (goal) => ipcRenderer.invoke('save-sales-goal', goal),
-
-  // Funções de Configurações
-  getScheduleSettings: () => ipcRenderer.invoke('get-schedule-settings'),
-  saveScheduleSettings: (settings) => ipcRenderer.invoke('save-schedule-settings', settings),
 
   generateUpdater: () => ipcRenderer.invoke('generate-updater'),
 

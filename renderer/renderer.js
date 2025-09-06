@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const formTitle = document.getElementById('form-title');
     const clientsListTableBody = document.getElementById('clients-list');
     const searchClientField = document.getElementById('search-client');
-    const btnForceCharge = document.getElementById('btn-force-charge');
     const clientCountEl = document.getElementById('client-count');
 
     // --- Envio em Massa ---
@@ -57,10 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let salesGoal = 0;
 
     // --- Configurações ---
-    const scheduleTime1Input = document.getElementById('schedule-time-1');
-    const scheduleTime2Input = document.getElementById('schedule-time-2');
-    const btnSaveScheduleSettings = document.getElementById('btn-save-schedule-settings');
-    const scheduleSettingsStatusEl = document.getElementById('schedule-settings-status');
     const btnGenerateUpdater = document.getElementById('btn-generate-updater');
     const generateUpdaterStatusEl = document.getElementById('generate-updater-status');
 
@@ -174,9 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let statusText = 'Desconectado';
             let statusIndicator = '<i class="fas fa-times-circle status-icon disconnected"></i>';
-            if (account.status === 'qr') { statusText = 'Aguardando QR Code'; statusIndicator = '<i class="fas fa-qrcode status-icon qr"></i>'; }
-            if (account.status === 'ready') { statusText = 'Conectado'; statusIndicator = '<i class="fas fa-check-circle status-icon ready"></i>'; }
-            if (account.status === 'initializing') { statusText = 'Inicializando...'; statusIndicator = '<i class="fas fa-circle-notch fa-spin status-icon initializing"></i>'; }
+            if (account.status === 'reconnecting') { statusText = 'Reconectando'; statusIndicator = '<i class="fas fa-circle-notch fa-spin status-icon reconnecting"></i>'; }
+            if (account.status === 'connected') { statusText = 'Conectado'; statusIndicator = '<i class="fas fa-check-circle status-icon connected"></i>'; }
             
             let contactableCount = 0;
             clientsMap.forEach(client => {
@@ -192,14 +186,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="account-body">
                     <div class="qr-code-container" id="qr-container-${account.id}"></div>
-                    <div class="account-stats ${account.status === 'ready' ? '' : 'hidden'}">
+                    <div class="account-stats ${account.status === 'connected' ? '' : 'hidden'}">
                         <p><strong>${contactableCount}</strong> de <strong>${clientsMap.size}</strong> clientes são contactáveis por esta conta.</p>
                         <button class="btn-revalidate" data-action="revalidate" title="Forçar atualização da lista de contactos"><i class="fas fa-sync"></i> Atualizar</button>
                     </div>
                 </div>
                 <div class="account-actions">
-                    <button class="btn-connect" data-action="connect" ${account.status === 'ready' || account.status === 'initializing' ? 'disabled' : ''}><i class="fas fa-link"></i> Conectar</button>
-                    <button class="btn-disconnect btn-danger" data-action="disconnect" ${account.status !== 'ready' ? 'disabled' : ''}><i class="fas fa-unlink"></i> Desconectar</button>
+                    <button class="btn-connect" data-action="connect" ${account.status === 'connected' || account.status === 'reconnecting' ? 'disabled' : ''}><i class="fas fa-link"></i> Conectar</button>
+                    <button class="btn-disconnect btn-danger" data-action="disconnect" ${account.status !== 'connected' ? 'disabled' : ''}><i class="fas fa-unlink"></i> Desconectar</button>
                     <button class="btn-rename" data-action="rename"><i class="fas fa-pencil-alt"></i> Renomear</button>
                     <button class="btn-delete-account btn-danger" data-action="delete"><i class="fas fa-trash"></i> Remover</button>
                 </div>
@@ -338,16 +332,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function populateWhatsAppAccountDropdown() {
         const currentValue = clientWhatsAppAccountSelect.value;
         clientWhatsAppAccountSelect.innerHTML = '<option value="" disabled>-- Selecione uma conta --</option>';
-        let hasReadyAccounts = false;
+        let hasConnectedAccounts = false;
         whatsappAccountsMap.forEach(account => {
             const option = document.createElement('option');
             option.value = account.id;
-            option.textContent = `${account.name} ${account.status !== 'ready' ? '(Desconectada)' : ''}`;
-            if (account.status !== 'ready') { option.disabled = true; } else { hasReadyAccounts = true; }
+            option.textContent = `${account.name} ${account.status !== 'connected' ? '(Desconectada)' : ''}`;
+            if (account.status !== 'connected') { option.disabled = true; } else { hasConnectedAccounts = true; }
             clientWhatsAppAccountSelect.appendChild(option);
         });
         clientWhatsAppAccountSelect.value = currentValue;
-        if (!hasReadyAccounts) { clientWhatsAppAccountSelect.innerHTML = '<option value="" disabled selected>Nenhuma conta conectada</option>'; } 
+        if (!hasConnectedAccounts) { clientWhatsAppAccountSelect.innerHTML = '<option value="" disabled selected>Nenhuma conta conectada</option>'; }
         else if (!clientWhatsAppAccountSelect.value) { clientWhatsAppAccountSelect.value = ""; }
     }
     
@@ -405,9 +399,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- Lógica de Envio em Massa ---
     function renderBulkMessageUI() {
-        const readyAccounts = [...whatsappAccountsMap.values()].filter(acc => acc.status === 'ready');
+        const connectedAccounts = [...whatsappAccountsMap.values()].filter(acc => acc.status === 'connected');
         let optionsHtml = '<option value="">-- Selecione a conta de envio --</option>';
-        readyAccounts.forEach(acc => { optionsHtml += `<option value="${acc.id}">${acc.name}</option>`; });
+        connectedAccounts.forEach(acc => { optionsHtml += `<option value="${acc.id}">${acc.name}</option>`; });
 
         bulkMessageContainer.innerHTML = `
             <div class="bulk-message-container content-card">
@@ -444,15 +438,6 @@ document.addEventListener('DOMContentLoaded', () => {
         statusEl.textContent = result.message;
     }
 
-    // --- Lógica de Configurações ---
-    async function loadScheduleSettings() {
-        const settings = await window.electronAPI.getScheduleSettings();
-        if (settings) {
-            scheduleTime1Input.value = settings.time1 || '10:00';
-            scheduleTime2Input.value = settings.time2 || '16:00';
-        }
-    }
-
     // --- Inicialização ---
     async function initializeApp() {
         // Navegação
@@ -460,7 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
             navLinks[key].addEventListener('click', (e) => {
                 e.preventDefault();
                 showView(key);
-                if (key === 'settings') loadScheduleSettings();
                 if (key === 'addClient') clearForm();
             });
         });
@@ -574,20 +558,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        btnForceCharge.addEventListener('click', async () => {
-            showModal('A Processar...', 'A verificar e enviar cobranças para clientes vencidos e contactáveis...', 'info');
-            const result = await window.electronAPI.forceChargeDueClients();
-            showModal('Processo Concluído', result.message, 'info');
-        });
-
-        btnSaveScheduleSettings.addEventListener('click', async () => {
-            const settings = { time1: scheduleTime1Input.value, time2: scheduleTime2Input.value };
-            const result = await window.electronAPI.saveScheduleSettings(settings);
-            scheduleSettingsStatusEl.textContent = result.success ? 'Horários atualizados!' : 'Erro ao guardar.';
-            scheduleSettingsStatusEl.className = `settings-status ${result.success ? 'alert-success' : 'alert-danger'}`;
-            setTimeout(() => { scheduleSettingsStatusEl.textContent = ''; scheduleSettingsStatusEl.className = 'settings-status'; }, 4000);
-        });
-
         btnGenerateUpdater.addEventListener('click', async () => {
             generateUpdaterStatusEl.textContent = 'A gerar...';
             const result = await window.electronAPI.generateUpdater();

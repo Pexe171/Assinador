@@ -1,7 +1,7 @@
 {
   "name": "gerenciador-clientes-whatsapp",
   "version": "1.0.0",
-  "description": "Gerenciador de clientes com lembretes automáticos via WhatsApp",
+  "description": "Gerenciador de clientes e contas de WhatsApp com envio de mensagens",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -13,10 +13,9 @@
   "keywords": [
     "electron",
     "whatsapp",
-    "scheduler",
     "client-manager"
   ],
-  "author": "Start",
+  "author": "Pexe (instagram @David.devloli)",
   "license": "ISC",
   "devDependencies": {
     "electron": "^28.0.0",
@@ -25,16 +24,15 @@
   },
   "dependencies": {
     "electron-store": "^8.1.0",
-    "node-cron": "^3.0.3",
     "qrcode": "^1.5.3",
     "qrcode-terminal": "^0.12.0",
+    "tar": "^6.1.11",
     "uuid": "^9.0.1",
-    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#main",
-    "tar": "^6.1.11"
+    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#main"
   },
   "build": {
-    "appId": "com.start.cobradorautomatico",
-    "productName": "Cobrador Automático WA",
+    "appId": "com.start.gestorcontaswa",
+    "productName": "Gestor de Contas WA",
     "copyright": "Copyright © 2024 ${author}",
     "directories": {
       "output": "dist_electron"
@@ -68,7 +66,7 @@
       "createStartMenuShortcut": true,
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
-      "shortcutName": "Cobrador Automático WA"
+      "shortcutName": "Gestor de Contas WA"
     },
     "mac": {
       "target": "dmg",
