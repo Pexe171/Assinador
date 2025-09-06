@@ -76,6 +76,24 @@ body {
     padding-bottom: 10px;
     margin-bottom: 20px;
 }
+.sub-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+.sub-tab {
+    background-color: var(--button-secondary-bg);
+    color: var(--primary-text-color);
+    padding: 8px 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.sub-tab.active {
+    background-color: var(--accent-color);
+    font-weight: bold;
+}
+.sub-tab-content.hidden { display: none; }
 .description { color: var(--secondary-text-color); margin-bottom: 10px; }
 
 

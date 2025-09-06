@@ -5,6 +5,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAddWhatsAppAccount = document.getElementById('btn-add-whatsapp-account');
     const modalOverlay = document.getElementById('custom-modal-overlay');
 
+    /* Navegação principal */
+    const navLinks = document.querySelectorAll('.navigation a');
+    const viewsMap = {
+        'nav-whatsapp-status': 'view-whatsapp-status',
+        'nav-mrv': 'view-mrv',
+        'nav-direcional': 'view-direcional',
+        'nav-ola-casa-nova': 'view-ola-casa-nova'
+    };
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            navLinks.forEach(l => l.classList.remove('active'));
+            document.querySelectorAll('.content-view').forEach(v => v.classList.add('hidden'));
+            link.classList.add('active');
+            const viewId = viewsMap[link.id];
+            if (viewId) document.getElementById(viewId).classList.remove('hidden');
+        });
+    });
+
+    /* Sub-abas para construtoras */
+    document.querySelectorAll('.sub-tabs').forEach(container => {
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.sub-tab');
+            if (!btn) return;
+            const parentCard = container.parentElement;
+            container.querySelectorAll('.sub-tab').forEach(b => b.classList.remove('active'));
+            parentCard.querySelectorAll('.sub-tab-content').forEach(c => c.classList.add('hidden'));
+            btn.classList.add('active');
+            const targetId = btn.dataset.target;
+            const targetEl = parentCard.querySelector(`#${targetId}`);
+            if (targetEl) targetEl.classList.remove('hidden');
+        });
+    });
+
     let whatsappAccountsMap = new Map();
     let currentModalConfirmCallback = null;
 

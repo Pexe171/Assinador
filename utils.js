@@ -11,7 +11,7 @@
 function formatMessage(template, context) {
     if (typeof template !== 'string') { // Adicionada verificação de tipo
         console.warn("formatMessage: template não é uma string:", template);
-        return ""; 
+        return "";
     }
     let message = template;
     for (const key in context) {
@@ -39,19 +39,19 @@ function getDaysUntilDue(dueDateString) {
     if (!dueDateString || typeof dueDateString !== 'string') return 'Data inválida';
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0); 
+    today.setHours(0, 0, 0, 0);
 
     const dateParts = dueDateString.split('-');
     if (dateParts.length !== 3) return 'Data inválida';
 
     const year = parseInt(dateParts[0], 10);
-    const month = parseInt(dateParts[1], 10) - 1; 
+    const month = parseInt(dateParts[1], 10) - 1;
     const day = parseInt(dateParts[2], 10);
 
     if (isNaN(year) || isNaN(month) || isNaN(day)) return 'Data inválida';
-    
-    const dueDate = new Date(year, month, day); 
-    dueDate.setHours(0,0,0,0); 
+
+    const dueDate = new Date(year, month, day);
+    dueDate.setHours(0,0,0,0);
 
     if (isNaN(dueDate.getTime())) return 'Data inválida';
 
@@ -88,9 +88,36 @@ function formatDate(dateString) {
     return dateString; // Retorna a string original se não for o formato esperado
 }
 
+/**
+ * Renderiza um template substituindo placeholders {{chave}} por dados do cliente e variáveis extras.
+ * @param {string} template
+ * @param {import('./types').Cliente} cliente
+ * @param {Object} vars
+ * @param {string[]} [obrigatorios=[]]
+ * @returns {string}
+ */
+function renderTemplate(template, cliente, vars = {}, obrigatorios = []) {
+    if (typeof template !== 'string') return '';
+    const merged = {
+        ...cliente,
+        carta: cliente.carta === 'SBTE' ? 'SBPE' : cliente.carta,
+        data: new Date().toLocaleDateString('pt-BR'),
+        linkFicha: cliente.fichaCadastroPath || '',
+        ...vars
+    };
+    const missing = obrigatorios.filter(p => !merged[p]);
+    if (missing.length) {
+        throw new Error(`Placeholders obrigatórios ausentes: ${missing.join(', ')}`);
+    }
+    return template.replace(/{{(.*?)}}/g, (_, key) => {
+        const val = merged[key.trim()];
+        return val !== undefined && val !== null ? String(val) : `{{${key}}}`;
+    });
+}
 
 module.exports = {
     formatMessage,
     getDaysUntilDue,
-    formatDate // GARANTIR QUE ESTÁ EXPORTADO
+    formatDate, // GARANTIR QUE ESTÁ EXPORTADO
+    renderTemplate
 };
