@@ -2,10 +2,6 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 
-// Conjunto de parâmetros do Puppeteer pensados para reduzir o consumo de memória
-// ao instanciar múltiplos clientes. Estes "flags" desativam funcionalidades
-// supérfluas do Chromium que normalmente consomem RAM sem benefício para o
-// aplicativo Electron.
 const PUPPETEER_ARGS = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
@@ -17,31 +13,17 @@ const PUPPETEER_ARGS = [
     '--renderer-process-limit=1'
 ];
 
-/**
- * Gestor de múltiplas instâncias de clientes WhatsApp.
- */
 const clientsManager = {
     clients: new Map(),
     mainWindow: null,
     store: null,
-    chatValidationCallback: null,
 
-    /**
-     * Inicia o gestor.
-     * @param {BrowserWindow} mainWindow - Janela principal para comunicação com a UI.
-     * @param {Store} electronStore - Acesso à base de dados.
-     * @param {Function} chatCallback - Função a ser chamada com os chats quando uma conta conecta.
-     */
-    start(mainWindow, electronStore, chatCallback) {
+    start(mainWindow, electronStore) {
         this.mainWindow = mainWindow;
         this.store = electronStore;
-        this.chatValidationCallback = chatCallback;
         this.loadAccountsFromStore();
     },
-    
-    /**
-     * Carrega as contas da base de dados para o mapa de controlo.
-     */
+
     loadAccountsFromStore() {
         const accounts = this.store.get('whatsappAccounts', []);
         this.clients.clear();
@@ -56,28 +38,22 @@ const clientsManager = {
         });
     },
 
-    /**
-     * Cria e inicializa uma instância do cliente WhatsApp.
-     * @param {string} accountId - O ID da conta a ser iniciada.
-     */
     async initializeClient(accountId) {
         const clientState = this.clients.get(accountId);
         if (!clientState || clientState.isInitializing || clientState.client) {
             return;
         }
 
-        console.log(`[WhatsAppManager] A iniciar cliente para a conta: ${accountId}`);
         clientState.isInitializing = true;
-        this.updateAccountState(accountId, 'initializing');
+        this.updateAccountState(accountId, 'reconnecting');
 
         const waClient = new Client({
-            authStrategy: new LocalAuth({ 
+            authStrategy: new LocalAuth({
                 clientId: accountId,
-                dataPath: "sessions" 
+                dataPath: "sessions"
             }),
             puppeteer: {
                 headless: true,
-                // Utiliza a lista de parâmetros definida acima para otimizar o uso de memória
                 args: PUPPETEER_ARGS
             }
         });
@@ -85,76 +61,39 @@ const clientsManager = {
         clientState.client = waClient;
 
         waClient.on('qr', (qr) => {
-            console.log(`[WhatsAppManager-${accountId}] QR Code recebido.`);
-            this.updateAccountState(accountId, 'qr');
+            this.updateAccountState(accountId, 'reconnecting');
             QRCode.toDataURL(qr).then(url => {
                 this.mainWindow.webContents.send('whatsapp-qr-code', accountId, url);
             });
         });
 
         waClient.on('ready', async () => {
-            console.log(`[WhatsAppManager-${accountId}] Cliente está pronto!`);
             clientState.isReady = true;
-            this.updateAccountState(accountId, 'ready');
-            this.revalidateChats(accountId); // Força a validação ao conectar
+            this.updateAccountState(accountId, 'connected');
         });
 
         waClient.on('disconnected', (reason) => {
-            console.log(`[WhatsAppManager-${accountId}] Cliente desconectado:`, reason);
             this.destroyClient(accountId, false);
         });
 
         try {
             await waClient.initialize();
         } catch (error) {
-            console.error(`[WhatsAppManager-${accountId}] Erro crítico na inicialização:`, error);
             await this.destroyClient(accountId, false);
         } finally {
             clientState.isInitializing = false;
         }
     },
 
-    /**
-     * Força uma nova leitura dos chats para validação de contactos.
-     * @param {string} accountId 
-     */
-    async revalidateChats(accountId) {
-        const clientState = this.clients.get(accountId);
-        if (!clientState || !clientState.isReady) {
-            throw new Error('A conta não está conectada para revalidar os chats.');
-        }
-        try {
-            let chats = await clientState.client.getChats();
-            console.log(`[WhatsAppManager-${accountId}] Revalidação: ${chats.length} chats encontrados.`);
-            if (this.chatValidationCallback) {
-                this.chatValidationCallback(accountId, chats);
-            }
-            // Libera memória das listas de chats após uso
-            chats = null;
-            if (global.gc) {
-                try { global.gc(); } catch (_) { /* ignore */ }
-            }
-        } catch (err) {
-            console.error(`[WhatsAppManager-${accountId}] Erro ao revalidar chats:`, err);
-            throw err;
-        }
-    },
-
-    /**
-     * Encerra a sessão de um cliente.
-     * @param {string} accountId - O ID da conta a ser destruída.
-     * @param {boolean} fullRemove - Se deve remover a conta completamente.
-     */
     async destroyClient(accountId, fullRemove = false) {
         const clientState = this.clients.get(accountId);
         if (clientState?.client) {
             await clientState.client.destroy().catch(() => {});
-            // Libera memória do processo Chromium associado, quando possível
             if (global.gc) {
                 try { global.gc(); } catch (_) { /* ignore */ }
             }
         }
-        
+
         if (fullRemove) {
             this.clients.delete(accountId);
         } else if (clientState) {
@@ -165,7 +104,7 @@ const clientsManager = {
         }
         this.updateOverallState();
     },
-    
+
     addAccount(account) {
         this.clients.set(account.id, {
             name: account.name,
@@ -176,7 +115,7 @@ const clientsManager = {
         });
         this.updateOverallState();
     },
-    
+
     renameAccount(accountId, newName) {
         const clientState = this.clients.get(accountId);
         if(clientState) {
@@ -193,7 +132,7 @@ const clientsManager = {
         const chatId = phoneNumber.endsWith('@c.us') ? phoneNumber : `${phoneNumber}@c.us`;
         await clientState.client.sendMessage(chatId, message);
     },
-    
+
     updateAccountState(accountId, status) {
         const clientState = this.clients.get(accountId);
         if (clientState) {
@@ -201,13 +140,13 @@ const clientsManager = {
             this.updateOverallState();
         }
     },
-    
+
     updateOverallState() {
         if (this.mainWindow?.webContents) {
             this.mainWindow.webContents.send('whatsapp-state-change', this.getClientsState());
         }
     },
-    
+
     getClientsState() {
         const stateArray = [];
         for (const [id, state] of this.clients.entries()) {
