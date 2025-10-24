@@ -18,6 +18,10 @@ dependencies = [
     "requests>=2.31",
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["TelegramManager*"]
+
 [tool.black]
 line-length = 100
 

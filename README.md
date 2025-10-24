@@ -37,7 +37,7 @@ A arquitetura completa está detalhada em [`docs/arquitetura.md`](docs/arquitetu
 ## Execução
 
 ```bash
-python -m app.main
+python -m TelegramManager.main
 ```
 
 ## Testes
@@ -49,5 +49,5 @@ pytest
 ## Build
 
 A distribuição pode ser gerada com ferramentas como PyInstaller ou Briefcase.
-O módulo `app/updater/auto_updater.py` prevê atualizações incrementais após a
+O módulo `TelegramManager/updater/auto_updater.py` prevê atualizações incrementais após a
 instalação inicial.
