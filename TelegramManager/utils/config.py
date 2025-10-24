@@ -42,11 +42,14 @@ class AppConfig:
 
         logging_config = LoggingConfig(level=env.get("APP_LOG_LEVEL", "INFO"))
 
-        base_dir = Path(env.get("APP_BASE_DIR", PathsConfig.base_dir))
+        default_paths = PathsConfig()
+        base_dir = Path(env.get("APP_BASE_DIR", default_paths.base_dir))
         paths_config = PathsConfig(
             base_dir=base_dir,
             logs_dir=Path(env.get("APP_LOG_DIR", base_dir / "logs")),
-            database_path=Path(env.get("APP_DB_PATH", base_dir / "data" / "app.sqlite3")),
+            database_path=Path(
+                env.get("APP_DB_PATH", base_dir / "data" / "app.sqlite3")
+            ),
             sessions_dir=Path(env.get("APP_SESSIONS_DIR", base_dir / "sessions")),
         )
 
