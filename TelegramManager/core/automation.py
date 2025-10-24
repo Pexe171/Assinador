@@ -1,3 +1,4 @@
+# Caminho: TelegramManager/core/automation.py
 """Sistema de automação central da aplicação."""
 
 from __future__ import annotations
@@ -5,10 +6,21 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from threading import Lock
 from typing import Callable, Dict, List
 
 from TelegramManager.utils.async_worker import BackgroundWorker
+
+
+class TaskStatus(str, Enum):
+    """Define os estados possíveis de uma tarefa."""
+
+    SCHEDULED = "Agendado"
+    RUNNING = "Em andamento"
+    COMPLETED = "Concluído"
+    FAILED = "Falhou"
+    PAUSED = "Pausado"
 
 
 @dataclass
@@ -21,7 +33,7 @@ class AutomationTask:
     agendamento: datetime
     delay_min: int
     delay_max: int
-    status: str = "Agendado"
+    status: TaskStatus = TaskStatus.SCHEDULED
     progresso: int = 0
     logs: List[str] = field(default_factory=list)
 
@@ -61,7 +73,7 @@ class AutomationEngine:
         self,
         identificador: str,
         *,
-        status: str | None = None,
+        status: TaskStatus | None = None,
         progresso: int | None = None,
         mensagem: str | None = None,
     ) -> None:
@@ -77,33 +89,46 @@ class AutomationEngine:
         if progresso is not None:
             tarefa.progresso = progresso
         if mensagem:
-            tarefa.logs.append(mensagem)
+            tarefa.logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {mensagem}")
 
     def executar_em_background(self, identificador: str, acao: Callable[[], None]) -> None:
         """Executa uma ação em *background* e atualiza o status automaticamente."""
 
         def _job() -> None:
-            self.atualizar_status(
-                identificador,
-                status="Em andamento",
-                mensagem="Execução iniciada pelo motor de automação.",
-            )
+            # Em um cenário real de automação, esta função (executar_em_background)
+            # não deveria controlar o status. O chamador (ex: AdditionManager)
+            # é quem deve atualizar o status via 'atualizar_status' ou
+            # manipulando seu próprio monitor.
+            #
+            # No entanto, para tarefas simples do 'AutomationWidget', mantemos este
+            # wrapper básico.
+            #
+            # A lógica do 'AdditionManager' é mais complexa e usa este worker
+            # apenas para obter o thread, mas controla o estado externamente.
+            if "addition-job-" not in identificador:
+                self.atualizar_status(
+                    identificador,
+                    status=TaskStatus.RUNNING,
+                    mensagem="Execução iniciada pelo motor de automação.",
+                )
             try:
                 acao()
             except Exception as exc:  # pragma: no cover - tratamento defensivo
-                self.atualizar_status(
-                    identificador,
-                    status="Falhou",
-                    mensagem=f"Erro durante a automação: {exc}",
-                )
+                if "addition-job-" not in identificador:
+                    self.atualizar_status(
+                        identificador,
+                        status=TaskStatus.FAILED,
+                        mensagem=f"Erro durante a automação: {exc}",
+                    )
             else:
-                # Simula conclusão imediata quando não há lógica real.
-                self.atualizar_status(
-                    identificador,
-                    status="Concluído",
-                    progresso=100,
-                    mensagem="Automação concluída com sucesso.",
-                )
+                if "addition-job-" not in identificador:
+                    # Simula conclusão imediata quando não há lógica real.
+                    self.atualizar_status(
+                        identificador,
+                        status=TaskStatus.COMPLETED,
+                        progresso=100,
+                        mensagem="Automação concluída com sucesso.",
+                    )
             finally:
                 time.sleep(0.05)
 
@@ -127,3 +152,4 @@ class AutomationEngine:
             self.shutdown()
         except Exception:
             pass
+

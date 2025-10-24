@@ -1,3 +1,4 @@
+# Caminho: TelegramManager/ui/widgets/accounts_manager.py
 """Widget para gestão visual de contas Telegram."""
 
 from __future__ import annotations
@@ -5,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Dict
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -40,17 +41,18 @@ class AccountData:
 class AccountsManagerWidget(QWidget):
     """Apresenta a lista de contas com opções de organização e detalhes."""
 
+    # Sinal emitido quando contas são adicionadas ou modificadas
+    account_changed = pyqtSignal()
+
     def __init__(
         self,
         container: Container,
         notifications: NotificationDispatcher,
-        on_change: Callable[[], None] | None = None,
     ) -> None:
         super().__init__()
         self._container = container
         self._notifications = notifications
         self._contas: Dict[str, AccountData] = {}
-        self._on_change = on_change
 
         self._montar_layout()
         self._carregar_sessoes()
@@ -68,7 +70,7 @@ class AccountsManagerWidget(QWidget):
         painel_form.addWidget(titulo)
 
         descricao = QLabel(
-            "Gerencie suas contas com arrastar e soltar, personalize preferências e "
+            "Gerencie suas contas, personalize preferências e "
             "acompanhe os logs de cada sessão."
         )
         descricao.setWordWrap(True)
@@ -140,9 +142,9 @@ class AccountsManagerWidget(QWidget):
     def _carregar_sessoes(self) -> None:
         self._container.session_manager.load_persisted_sessions()
         for info in self._container.session_manager.sessions.values():
-            self._registrar_sessao(info)
+            self._registrar_sessao(info, notificar=False)
 
-    def _registrar_sessao(self, session: SessionInfo) -> None:
+    def _registrar_sessao(self, session: SessionInfo, notificar: bool = True) -> None:
         existente = self._buscar_item(session.phone)
         if existente is None:
             avatar = QPixmap(48, 48)
@@ -153,18 +155,19 @@ class AccountsManagerWidget(QWidget):
             dados = AccountData(info=session)
             dados.logs.append("Conta conectada com sucesso")
             self._contas[session.phone] = dados
-            self._notifications.notify(
-                titulo="Conta disponível",
-                mensagem=f"A conta {session.display_name} foi registrada.",
-            )
+            if notificar:
+                self._notifications.notify(
+                    titulo="Conta disponível",
+                    mensagem=f"A conta {session.display_name} foi registrada.",
+                )
         else:
             existente.setText(f"{session.display_name}\n{session.phone}")
             dados = self._contas[session.phone]
             dados.info = session
             dados.logs.append("Dados atualizados")
+
         self._atualizar_detalhes()
-        if self._on_change:
-            self._on_change()
+        self.account_changed.emit()
 
     def _obter_conta_selecionada(self) -> AccountData | None:
         item = self._lista.currentItem()
@@ -209,3 +212,4 @@ class AccountsManagerWidget(QWidget):
 
     def _registrar_toast(self, mensagem: str) -> None:
         self._notifications.notify(titulo="Status da conta", mensagem=mensagem)
+

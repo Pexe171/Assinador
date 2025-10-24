@@ -1,3 +1,4 @@
+# Caminho: TelegramManager/ui/widgets/group_manager.py
 """Widget para organização e extração de dados de grupos."""
 
 from __future__ import annotations
@@ -5,8 +6,8 @@ from __future__ import annotations
 from random import randint
 from typing import Callable, List, Optional
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6t.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -30,16 +31,17 @@ from TelegramManager.notifications.dispatcher import NotificationDispatcher
 class GroupManagerWidget(QWidget):
     """Permite gerenciar grupos e executar extrações guiadas."""
 
+    # Sinal emitido quando uma extração é concluída com sucesso
+    extraction_finished = pyqtSignal()
+
     def __init__(
         self,
         extraction_service: ExtractionService,
         notifications: NotificationDispatcher,
-        on_finished: Optional[Callable[[], None]] = None,
     ) -> None:
         super().__init__()
         self._extraction_service = extraction_service
         self._notifications = notifications
-        self._on_finished = on_finished
         self._dados_preview: List[tuple[str, str, str]] = []
         self._montar_interface()
 
@@ -56,18 +58,19 @@ class GroupManagerWidget(QWidget):
         painel_layout = QVBoxLayout(painel)
         painel_layout.setSpacing(12)
 
-        titulo = QLabel("Gerenciar Grupos")
+        titulo = QLabel("Gerenciar Grupos (Extração)")
         titulo.setStyleSheet("font-size: 22px; font-weight: bold;")
         painel_layout.addWidget(titulo)
 
         descricao = QLabel(
-            "Selecione múltiplos grupos para estruturar listas de extração."
+            "Selecione múltiplos grupos para executar extrações de usuários."
         )
         descricao.setWordWrap(True)
         painel_layout.addWidget(descricao)
 
         self._lista_grupos = QListWidget()
         self._lista_grupos.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        # Dados de exemplo
         for indice in range(1, 11):
             item = QListWidgetItem(f"Grupo estratégico {indice}")
             self._lista_grupos.addItem(item)
@@ -131,8 +134,8 @@ class GroupManagerWidget(QWidget):
         botao_anterior.clicked.connect(lambda: self._wizard.setCurrentIndex(0))
         botoes.addWidget(botao_anterior)
 
-        botao_continuar = QPushButton("Exportar e concluir")
-        botao_continuar.clicked.connect(lambda: self._wizard.setCurrentIndex(2))
+        botao_continuar = QPushButton("Salvar no Banco e Concluir")
+        botao_continuar.clicked.connect(self._concluir_extracao)
         botoes.addWidget(botao_continuar)
         layout.addLayout(botoes)
         return passo
@@ -143,7 +146,7 @@ class GroupManagerWidget(QWidget):
         layout.setSpacing(12)
 
         mensagem = QLabel(
-            "Tudo pronto! Baixe o resultado ou dispare ações de onboarding nos grupos."
+            "Extração concluída! Os usuários foram salvos no Banco de Usuários local."
         )
         mensagem.setWordWrap(True)
         layout.addWidget(mensagem)
@@ -158,6 +161,7 @@ class GroupManagerWidget(QWidget):
     def _iniciar_wizard(self) -> None:
         selecionados = [item.text() for item in self._lista_grupos.selectedItems()]
         if not selecionados:
+            self._notifications.notify("Aviso", "Selecione pelo menos um grupo para extrair.")
             return
         self._executar_extracao(selecionados)
         self._wizard.setCurrentIndex(1)
@@ -165,8 +169,11 @@ class GroupManagerWidget(QWidget):
     def _executar_extracao(self, grupos: List[str]) -> None:
         filtro = self._input_filtro.text()
         try:
+            # Em uma aplicação real, isso deveria rodar em background (ex: no engine)
+            # Por enquanto, executamos direto para simular.
             resumo = self._extraction_service.run_basic_extraction(grupos, filtro=filtro)
-        except ValueError:
+        except ValueError as e:
+            self._notifications.notify("Erro", str(e))
             return
 
         self._dados_preview = [
@@ -175,12 +182,21 @@ class GroupManagerWidget(QWidget):
         ]
         self._popular_tabela(self._dados_preview)
         self._progresso.setValue(resumo.progress or randint(45, 95))
+        
         self._notifications.notify(
-            titulo="Extração concluída",
+            titulo="Extração Pré-visualizada",
+            mensagem=f"{len(self._dados_preview)} usuários encontrados.",
+        )
+
+    def _concluir_extracao(self) -> None:
+        # A lógica em _executar_extracao já salva no banco (run_basic_extraction)
+        # Esta etapa apenas confirma e move o wizard.
+        self._notifications.notify(
+            titulo="Extração Salva",
             mensagem=f"{len(self._dados_preview)} usuários salvos no banco local.",
         )
-        if self._on_finished:
-            self._on_finished()
+        self.extraction_finished.emit()
+        self._wizard.setCurrentIndex(2)
 
     def _popular_tabela(self, dados: List[tuple[str, str, str]]) -> None:
         self._tabela.setRowCount(len(dados))
@@ -202,3 +218,4 @@ class GroupManagerWidget(QWidget):
         ]
         self._popular_tabela(filtrados)
         self._progresso.setValue(min(100, 50 + len(filtrados)) if filtrados else 0)
+

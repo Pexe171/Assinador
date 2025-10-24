@@ -1,9 +1,11 @@
+# Caminho: TelegramManager/core/container.py
 """Contêiner de dependências simples para orquestrar serviços."""
 
 from __future__ import annotations
 
 from functools import cached_property
 
+from TelegramManager.core.addition_manager import AdditionManager
 from TelegramManager.core.automation import AutomationEngine
 from TelegramManager.core.database import Database
 from TelegramManager.core.extraction import ExtractionService
@@ -44,8 +46,18 @@ class Container:
         return ExtractionService(database=self.database)
 
     @cached_property
+    def addition_manager(self) -> AdditionManager:
+        return AdditionManager(
+            database=self.database,
+            pool=self.telegram_pool,
+            engine=self.automation_engine,
+        )
+
+    @cached_property
     def report_service(self) -> ReportService:
         return ReportService(
             automation_engine=self.automation_engine,
             extraction_service=self.extraction_service,
+            addition_manager=self.addition_manager,
         )
+
