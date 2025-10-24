@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict
 
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QIcon, QPixmap # QColor adicionado
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap # QColor adicionado
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QFrame, # Adicionado QFrame
@@ -146,153 +146,163 @@ class AccountsManagerWidget(QWidget):
     def _aplicar_estilos(self) -> None:
         """Aplica a folha de estilos (Stylesheet) para a aparência."""
         self.setStyleSheet("""
+            AccountsManagerWidget {
+                background-color: transparent;
+            }
+            QWidget {
+                color: #e2e8f0;
+            }
+
             /* Títulos e Descrições Gerais da View */
             QLabel#viewTitle {
                 font-size: 24px;
                 font-weight: 600;
-                color: #1a202c;
-                padding-bottom: 5px; /* Menos espaço abaixo */
+                color: #f8fafc;
+                padding-bottom: 5px;
             }
             QLabel#viewDescription {
                 font-size: 14px;
-                color: #718096; /* Cinza médio */
+                color: #94a3b8;
                 padding-bottom: 10px;
             }
 
             /* Frame do Formulário */
             QFrame#formFrame {
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
+                background-color: #111827;
+                border: 1px solid #1f2937;
+                border-radius: 14px;
             }
 
-            /* Estilos dentro do SessionFormWidget (Adaptar se necessário) */
+            /* Estilos dentro do SessionFormWidget */
             SessionFormWidget QLineEdit {
-                padding: 8px 12px;
-                border: 1px solid #cbd5e0;
-                border-radius: 6px;
-                font-size: 14px;
-            }
-            SessionFormWidget QPushButton {
-                padding: 10px 15px;
-                background-color: #4299e1; /* Azul */
-                color: white;
-                border: none;
+                padding: 10px 14px;
+                border: 1px solid #1e293b;
                 border-radius: 8px;
                 font-size: 14px;
-                font-weight: 500;
-                margin-top: 10px; /* Espaço acima do botão */
+                background-color: #0b1220;
+                color: #f1f5f9;
+                selection-background-color: #38bdf8;
+                selection-color: #0f172a;
+            }
+            SessionFormWidget QLineEdit:focus {
+                border: 1px solid #38bdf8;
+            }
+            SessionFormWidget QPushButton {
+                padding: 12px 16px;
+                background-color: #f8fafc;
+                color: #0f172a;
+                border: none;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: 600;
+                margin-top: 12px;
             }
             SessionFormWidget QPushButton:hover {
-                background-color: #3182ce;
+                background-color: #e2e8f0;
             }
 
             /* Frame da Lista */
             QFrame#listFrame {
-                 background-color: #ffffff;
-                 border: 1px solid #e2e8f0;
-                 border-radius: 12px;
-                 padding: 15px; /* Padding interno */
+                 background-color: #111827;
+                 border: 1px solid #1f2937;
+                 border-radius: 14px;
+                 padding: 18px;
             }
              QLabel#listTitle {
                 font-size: 16px;
                 font-weight: 600;
-                color: #2d3748;
-                padding-bottom: 10px;
-                margin-left: 5px; /* Alinha com itens */
+                color: #f1f5f9;
+                padding-bottom: 12px;
+                margin-left: 6px;
              }
 
             /* Lista de Contas */
             QListWidget#accountList {
-                border: none; /* Remove borda padrão */
+                border: none;
                 outline: 0px;
+                background-color: transparent;
             }
             QListWidget#accountList::item {
-                padding: 12px 15px; /* Padding interno do item */
-                border-radius: 8px;
-                margin: 3px 0px; /* Espaçamento vertical */
-                border-bottom: 1px solid #f7fafc; /* Linha sutil entre itens */
-                background-color: transparent; /* Fundo padrão */
-                color: #4a5568;
+                padding: 12px 16px;
+                border-radius: 10px;
+                margin: 4px 0px;
+                background-color: #111827;
+                color: #cbd5f5;
             }
-             QListWidget#accountList::item:last-child {
-                border-bottom: none;
-             }
-            QListWidget#accountList::item:hover {
-                background-color: #f0f4f8;
-                color: #2d3748;
+             QListWidget#accountList::item:hover {
+                background-color: #1e293b;
+                color: #f8fafc;
             }
             QListWidget#accountList::item:selected {
-                background-color: #ebf8ff; /* Azul bem claro */
-                color: #2b6cb0; /* Azul escuro */
-                font-weight: 500;
-                border-left: 3px solid #4299e1; /* Indicador lateral */
-                padding-left: 12px; /* Ajusta padding por causa da borda */
+                background-color: #38bdf8;
+                color: #0f172a;
+                font-weight: 600;
+                border-left: 3px solid #f8fafc;
+                padding-left: 13px;
             }
             QListWidget#accountList::item:focus {
                 outline: none;
-                border: none; /* Remove foco visual */
+                border: none;
             }
 
 
             /* Frame de Detalhes */
             QFrame#detailsFrame {
-                 background-color: #ffffff;
-                 border: 1px solid #e2e8f0;
-                 border-radius: 12px;
+                 background-color: #111827;
+                 border: 1px solid #1f2937;
+                 border-radius: 14px;
             }
 
             /* Conteúdo do Painel de Detalhes */
-            #detailsPanel QLabel#detailTitle { /* Título no painel de detalhes */
+            #detailsPanel QLabel#detailTitle {
                 font-size: 20px;
                 font-weight: 600;
-                color: #2d3748;
+                color: #f8fafc;
                 padding-bottom: 15px;
             }
             #detailsPanel QGroupBox {
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                margin-top: 15px; /* Espaço acima do groupbox */
-                padding: 15px; /* Padding interno */
-                background-color: #fdfdfe; /* Fundo ligeiramente diferente */
+                border: 1px solid #1e293b;
+                border-radius: 10px;
+                margin-top: 18px;
+                padding: 18px;
+                background-color: #0f172a;
             }
             #detailsPanel QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                left: 10px;
-                padding: 0 5px 5px 5px; /* Ajusta posição do título */
-                color: #4a5568;
+                left: 12px;
+                padding: 0 6px 6px 6px;
+                color: #94a3b8;
                 font-weight: 500;
             }
-            #detailsPanel QFormLayout QLabel { /* Labels do formulário */
-                color: #718096;
-                padding-top: 3px; /* Alinha melhor com o valor */
+            #detailsPanel QFormLayout QLabel {
+                color: #94a3b8;
+                padding-top: 3px;
             }
-             #detailsPanel QFormLayout QLabel#detailValueLabel { /* Valores no formulário */
-                font-weight: 500;
-                color: #2d3748;
+             #detailsPanel QFormLayout QLabel#detailValueLabel {
+                font-weight: 600;
+                color: #f8fafc;
             }
             #detailsPanel QPushButton {
-                padding: 8px 12px;
-                background-color: #edf2f7; /* Cinza claro */
-                color: #4a5568;
-                border: 1px solid #e2e8f0;
-                border-radius: 6px;
+                padding: 10px 14px;
+                background-color: #f8fafc;
+                color: #0f172a;
+                border: none;
+                border-radius: 8px;
                 font-size: 13px;
-                font-weight: 500;
+                font-weight: 600;
             }
              #detailsPanel QPushButton:hover {
                  background-color: #e2e8f0;
-                 border-color: #cbd5e0;
              }
-             #detailsPanel QPlainTextEdit { /* Área de Logs */
-                 background-color: #f7fafc;
-                 color: #4a5568;
+             #detailsPanel QPlainTextEdit {
+                 background-color: #0b1220;
+                 color: #e2e8f0;
                  font-family: "Consolas", "Courier New", monospace;
                  font-size: 13px;
-                 border: 1px solid #e2e8f0;
-                 border-radius: 8px;
-                 padding: 10px;
+                 border: 1px solid #1e293b;
+                 border-radius: 10px;
+                 padding: 12px;
              }
         """)
 
