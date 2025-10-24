@@ -2,41 +2,34 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Dict
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QHBoxLayout,
-    QLabel,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
-    QMessageBox,
     QStackedWidget,
     QStatusBar,
-    QTabWidget,
-    QVBoxLayout,
     QWidget,
 )
 
 from app.core.container import Container
-from app.core.session_manager import SessionInfo
 from app.notifications.dispatcher import NotificationDispatcher
-from app.gui.widgets.dashboard import DashboardWidget
-from app.gui.widgets.log_console import LogConsoleWidget
-from app.gui.widgets.session_form import SessionFormWidget
-
-
-@dataclass
-class AccountItem:
-    phone: str
-    display_name: str
-    status: str
+from app.gui.widgets import (
+    AccountsManagerWidget,
+    DashboardWidget,
+    GroupAutomationWidget,
+    GroupManagerWidget,
+    ReportsWidget,
+    SettingsWidget,
+    UserBankWidget,
+)
 
 
 class MainWindow(QMainWindow):
-    """Janela principal com abas e painel lateral de contas."""
+    """Janela principal com navegação lateral e conteúdo dinâmico."""
 
     def __init__(self, container: Container, notifications: NotificationDispatcher) -> None:
         super().__init__()
@@ -44,74 +37,85 @@ class MainWindow(QMainWindow):
         self._notifications = notifications
 
         self.setWindowTitle(container.config.app_name)
-        self.resize(1200, 720)
+        self.resize(1280, 760)
 
-        self._accounts: Dict[str, AccountItem] = {}
+        self._views: Dict[str, QWidget] = {}
 
-        self._criar_componentes()
-        self._popular_sessoes()
+        self._montar_interface()
+        self._configurar_status_bar()
 
-    def _criar_componentes(self) -> None:
+    def _montar_interface(self) -> None:
         raiz = QWidget()
         layout = QHBoxLayout(raiz)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        self._lista_contas = QListWidget()
-        self._lista_contas.setMaximumWidth(280)
-        self._lista_contas.itemClicked.connect(self._selecionar_conta)
+        self._navegacao = QListWidget()
+        self._navegacao.setFixedWidth(240)
+        self._navegacao.setSpacing(4)
+        self._navegacao.currentRowChanged.connect(self._alterar_secao)
 
-        painel_central = QTabWidget()
-        painel_central.addTab(DashboardWidget(container=self._container), "Dashboard")
-        painel_central.addTab(SessionFormWidget(container=self._container, on_create=self._adicionar_sessao), "Contas")
-        painel_central.addTab(LogConsoleWidget(), "Logs")
+        self._conteudo = QStackedWidget()
 
-        self._detalhes_stack = QStackedWidget()
-        self._detalhes_stack.addWidget(self._criar_placeholder("Selecione uma conta"))
-
-        layout.addWidget(self._lista_contas)
-        layout.addWidget(painel_central, stretch=3)
-        layout.addWidget(self._detalhes_stack, stretch=2)
+        layout.addWidget(self._navegacao)
+        layout.addWidget(self._conteudo, stretch=1)
 
         self.setCentralWidget(raiz)
-        status_bar = QStatusBar()
-        self.setStatusBar(status_bar)
 
-    def _criar_placeholder(self, texto: str) -> QWidget:
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.addStretch()
-        label = QLabel(texto)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(label)
-        layout.addStretch()
-        return widget
+        self._inicializar_views()
+        self._navegacao.setCurrentRow(0)
 
-    def _popular_sessoes(self) -> None:
-        self._container.session_manager.load_persisted_sessions()
-        for info in self._container.session_manager.sessions.values():
-            self._adicionar_item_lista(info)
+    def _configurar_status_bar(self) -> None:
+        barra = QStatusBar()
+        barra.showMessage("Bem-vindo! Selecione uma área para começar.")
+        self.setStatusBar(barra)
 
-    def _adicionar_item_lista(self, info: SessionInfo) -> None:
-        item = QListWidgetItem(f"{info.display_name} ({info.status})")
-        item.setData(Qt.ItemDataRole.UserRole, info.phone)
-        self._lista_contas.addItem(item)
-        self._accounts[info.phone] = AccountItem(
-            phone=info.phone,
-            display_name=info.display_name,
-            status=info.status,
+    def _inicializar_views(self) -> None:
+        self._dashboard = DashboardWidget(container=self._container)
+        self._automation = GroupAutomationWidget()
+        self._automation.tasks_changed.connect(self._sincronizar_agendamentos)
+
+        self._accounts = AccountsManagerWidget(
+            container=self._container,
+            notifications=self._notifications,
+            on_change=self._dashboard.atualizar_metricas,
         )
 
-    def _selecionar_conta(self, item: QListWidgetItem) -> None:
-        phone = item.data(Qt.ItemDataRole.UserRole)
-        dados = self._accounts.get(phone)
-        if not dados:
-            QMessageBox.warning(self, "Conta não encontrada", "Os dados da conta não foram carregados.")
+        self._groups = GroupManagerWidget()
+        self._user_bank = UserBankWidget()
+        self._reports = ReportsWidget()
+        self._settings = SettingsWidget()
+
+        self._dashboard.atualizar_metricas()
+        self._sincronizar_agendamentos()
+
+        self._nav_items = [
+            ("📊 Dashboard", "dashboard", self._dashboard),
+            ("👥 Contas Telegram", "accounts", self._accounts),
+            ("🗂️ Gerenciar Grupos", "groups", self._groups),
+            ("👤 Banco de Usuários", "user_bank", self._user_bank),
+            ("⚡ Automação", "automation", self._automation),
+            ("📈 Relatórios", "reports", self._reports),
+            ("⚙️ Configurações", "settings", self._settings),
+        ]
+
+        for indice, (titulo, chave, widget) in enumerate(self._nav_items):
+            item = QListWidgetItem(titulo)
+            item.setData(Qt.ItemDataRole.UserRole, chave)
+            self._navegacao.addItem(item)
+            self._conteudo.addWidget(widget)
+            self._views[chave] = widget
+
+    def _alterar_secao(self, indice: int) -> None:
+        if indice < 0 or indice >= len(self._nav_items):
             return
-        self.statusBar().showMessage(f"Conta selecionada: {dados.display_name}")
+        self._conteudo.setCurrentIndex(indice)
+        titulo, chave, _ = self._nav_items[indice]
+        self.statusBar().showMessage(f"Visualizando {titulo}.")
+        if chave == "automation":
+            self._sincronizar_agendamentos()
+        elif chave == "dashboard":
+            self._dashboard.atualizar_metricas()
 
-    def _adicionar_sessao(self, session: SessionInfo) -> None:
-        self._adicionar_item_lista(session)
-        self._notifications.notify(
-            titulo="Conta conectada",
-            mensagem=f"A conta {session.display_name} foi autenticada com sucesso.",
-        )
+    def _sincronizar_agendamentos(self) -> None:
+        self._dashboard.atualizar_agendamentos(self._automation.obter_tarefas())
