@@ -1,0 +1,21 @@
+# Ambiente Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+.venv/
+.env
+
+# Artefatos de build
+build/
+dist/
+*.egg-info/
+
+# IDEs
+.vscode/
+.idea/
+
+# Node legacy
+node_modules/
