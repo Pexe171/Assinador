@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from random import randint
-from typing import List
+from typing import Callable, List, Optional
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -23,12 +23,23 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from TelegramManager.core.extraction import ExtractionService
+from TelegramManager.notifications.dispatcher import NotificationDispatcher
+
 
 class GroupManagerWidget(QWidget):
     """Permite gerenciar grupos e executar extrações guiadas."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        extraction_service: ExtractionService,
+        notifications: NotificationDispatcher,
+        on_finished: Optional[Callable[[], None]] = None,
+    ) -> None:
         super().__init__()
+        self._extraction_service = extraction_service
+        self._notifications = notifications
+        self._on_finished = on_finished
         self._dados_preview: List[tuple[str, str, str]] = []
         self._montar_interface()
 
@@ -148,16 +159,28 @@ class GroupManagerWidget(QWidget):
         selecionados = [item.text() for item in self._lista_grupos.selectedItems()]
         if not selecionados:
             return
-        self._gerar_preview(selecionados)
+        self._executar_extracao(selecionados)
         self._wizard.setCurrentIndex(1)
 
-    def _gerar_preview(self, grupos: List[str]) -> None:
+    def _executar_extracao(self, grupos: List[str]) -> None:
+        filtro = self._input_filtro.text()
+        try:
+            resumo = self._extraction_service.run_basic_extraction(grupos, filtro=filtro)
+        except ValueError:
+            return
+
         self._dados_preview = [
-            (f"@lead{indice}", "Decisor", grupos[indice % len(grupos)])
-            for indice in range(1, 31)
+            (registro.username, registro.role, registro.origin_group)
+            for registro in resumo.users
         ]
         self._popular_tabela(self._dados_preview)
-        self._progresso.setValue(randint(45, 95))
+        self._progresso.setValue(resumo.progress or randint(45, 95))
+        self._notifications.notify(
+            titulo="Extração concluída",
+            mensagem=f"{len(self._dados_preview)} usuários salvos no banco local.",
+        )
+        if self._on_finished:
+            self._on_finished()
 
     def _popular_tabela(self, dados: List[tuple[str, str, str]]) -> None:
         self._tabela.setRowCount(len(dados))
@@ -170,6 +193,7 @@ class GroupManagerWidget(QWidget):
         termo_normalizado = termo.lower().strip()
         if not termo_normalizado:
             self._popular_tabela(self._dados_preview)
+            self._progresso.setValue(100 if self._dados_preview else 0)
             return
         filtrados = [
             item
@@ -177,4 +201,4 @@ class GroupManagerWidget(QWidget):
             if termo_normalizado in " ".join(item).lower()
         ]
         self._popular_tabela(filtrados)
-        self._progresso.setValue(min(100, 50 + len(filtrados)))
+        self._progresso.setValue(min(100, 50 + len(filtrados)) if filtrados else 0)

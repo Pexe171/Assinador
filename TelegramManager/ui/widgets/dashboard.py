@@ -44,6 +44,7 @@ class DashboardWidget(QWidget):
     def __init__(self, container: Container) -> None:
         super().__init__()
         self._container = container
+        self._extraction_service = container.extraction_service
         self._cards: dict[str, QLabel] = {}
         self._timeline: QListWidget
         self._grafico: QWidget
@@ -216,9 +217,9 @@ class DashboardWidget(QWidget):
         total_contas = len(self._container.session_manager.sessions)
         self._cards["contas"].setText(str(total_contas))
 
-        # Métricas fictícias porém coerentes com o fluxo
-        self._cards["usuarios"].setText("128")
-        self._cards["grupos"].setText("34")
+        overview = self._extraction_service.overview()
+        self._cards["usuarios"].setText(str(overview.total_users))
+        self._cards["grupos"].setText(str(overview.total_groups))
 
     def atualizar_agendamentos(self, tarefas: Iterable[AutomationTask]) -> None:
         tarefas_ordenadas = sorted(

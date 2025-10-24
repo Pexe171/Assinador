@@ -83,8 +83,14 @@ class MainWindow(QMainWindow):
             on_change=self._dashboard.atualizar_metricas,
         )
 
-        self._groups = GroupManagerWidget()
-        self._user_bank = UserBankWidget()
+        self._groups = GroupManagerWidget(
+            extraction_service=self._container.extraction_service,
+            notifications=self._notifications,
+            on_finished=self._atualizar_banco_usuarios,
+        )
+        self._user_bank = UserBankWidget(
+            extraction_service=self._container.extraction_service,
+        )
         self._reports = ReportsWidget()
         self._settings = SettingsWidget()
 
@@ -118,6 +124,10 @@ class MainWindow(QMainWindow):
             self._sincronizar_agendamentos()
         elif chave == "dashboard":
             self._dashboard.atualizar_metricas()
+
+    def _atualizar_banco_usuarios(self) -> None:
+        self._user_bank.recarregar()
+        self._dashboard.atualizar_metricas()
 
     def _sincronizar_agendamentos(self) -> None:
         self._dashboard.atualizar_agendamentos(self._automation.obter_tarefas())

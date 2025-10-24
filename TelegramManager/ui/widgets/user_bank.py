@@ -20,15 +20,18 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from TelegramManager.core.extraction import ExtractionService, ExtractedUserRecord
+
 
 class UserBankWidget(QWidget):
     """Permite classificar e filtrar rapidamente usuários capturados."""
 
-    def __init__(self) -> None:
+    def __init__(self, extraction_service: ExtractionService) -> None:
         super().__init__()
-        self._dataset: List[tuple[str, str, str]] = []
+        self._service = extraction_service
+        self._dataset: List[ExtractedUserRecord] = []
         self._montar_layout()
-        self._popular_dados()
+        self._carregar_dados()
 
     def _montar_layout(self) -> None:
         layout = QHBoxLayout(self)
@@ -49,7 +52,7 @@ class UserBankWidget(QWidget):
 
         self._lista_segmentos = QListWidget()
         self._lista_segmentos.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
-        for etiqueta in ["Lançamento", "Clientes VIP", "Nutrição", "Reengajamento"]:
+        for etiqueta in sorted({"Lançamento", "Clientes VIP", "Nutrição", "Reengajamento"}):
             self._lista_segmentos.addItem(QListWidgetItem(etiqueta))
         self._lista_segmentos.currentItemChanged.connect(lambda *_: self._filtrar())
         painel_layout.addWidget(self._lista_segmentos)
@@ -91,30 +94,43 @@ class UserBankWidget(QWidget):
 
         return painel
 
-    def _popular_dados(self) -> None:
-        self._dataset = [
-            ("@carol_growth", "Lançamento", "Quente"),
-            ("@davi_sdr", "Reengajamento", "Morno"),
-            ("@isabela_cx", "Clientes VIP", "Ativo"),
-            ("@ricardo_data", "Nutrição", "Frio"),
-            ("@aline_mid", "Lançamento", "Quente"),
-        ]
+    def _carregar_dados(self) -> None:
+        self._dataset = self._service.list_recent_users()
+        if not self._dataset:
+            self._lista_segmentos.clear()
+            self._tabela.setRowCount(0)
+            return
+        segmentos = sorted({item.segment for item in self._dataset})
+        self._lista_segmentos.clear()
+        for segmento in segmentos:
+            self._lista_segmentos.addItem(QListWidgetItem(segmento))
+        if self._lista_segmentos.count() > 0:
+            self._lista_segmentos.setCurrentRow(0)
         self._preencher_tabela(self._dataset)
+        self._filtrar()
 
-    def _preencher_tabela(self, dados: List[tuple[str, str, str]]) -> None:
+    def _preencher_tabela(self, dados: List[ExtractedUserRecord]) -> None:
         self._tabela.setRowCount(len(dados))
-        for linha, (usuario, segmento, status) in enumerate(dados):
-            self._tabela.setItem(linha, 0, QTableWidgetItem(usuario))
-            self._tabela.setItem(linha, 1, QTableWidgetItem(segmento))
-            self._tabela.setItem(linha, 2, QTableWidgetItem(status))
+        for linha, item in enumerate(dados):
+            self._tabela.setItem(linha, 0, QTableWidgetItem(item.username))
+            self._tabela.setItem(linha, 1, QTableWidgetItem(item.segment))
+            self._tabela.setItem(linha, 2, QTableWidgetItem(item.status))
 
     def _filtrar(self) -> None:
         termo = self._input_busca.text().lower().strip()
-        segmento = self._lista_segmentos.currentItem().text() if self._lista_segmentos.currentItem() else None
+        item_segmento = self._lista_segmentos.currentItem()
+        segmento = item_segmento.text() if item_segmento else None
         dados = [
             item
             for item in self._dataset
-            if (not segmento or item[1] == segmento)
-            and (not termo or termo in " ".join(item).lower())
+            if (not segmento or item.segment == segmento)
+            and (not termo or termo in " ".join(
+                [item.username.lower(), item.role.lower(), item.origin_group.lower(), item.segment.lower(), item.status.lower()]
+            ))
         ]
         self._preencher_tabela(dados)
+
+    def recarregar(self) -> None:
+        """Reprocessa os dados de forma idempotente para refletir novas extrações."""
+
+        self._carregar_dados()
