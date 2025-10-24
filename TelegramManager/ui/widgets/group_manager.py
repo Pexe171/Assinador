@@ -7,7 +7,8 @@ from random import randint
 from typing import Callable, List, Optional
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6t.QtWidgets import (
+# Correcção: Importar QtWidgets corretamente (PyQt6 em vez de PyQt6t)
+from PyQt6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -182,7 +183,7 @@ class GroupManagerWidget(QWidget):
         ]
         self._popular_tabela(self._dados_preview)
         self._progresso.setValue(resumo.progress or randint(45, 95))
-        
+
         self._notifications.notify(
             titulo="Extração Pré-visualizada",
             mensagem=f"{len(self._dados_preview)} usuários encontrados.",

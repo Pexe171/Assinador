@@ -1,7 +1,9 @@
+# Caminho: TelegramManager/core/extraction.py
 """Serviços centrais relacionados à extração básica de usuários."""
 
 from __future__ import annotations
 
+import logging
 import secrets
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,11 +14,14 @@ from sqlalchemy import func, select
 from TelegramManager.core.database import Database
 from TelegramManager.storage import Account, ExtractionJob, ExtractedUser
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ExtractedUserRecord:
     """Estrutura de dados imutável representando um usuário extraído."""
-
+    # Adicionando ID para referência
+    id: int
     username: str
     role: str
     origin_group: str
@@ -30,7 +35,7 @@ class ExtractionSummary:
 
     job_id: int
     progress: int
-    users: List[ExtractedUserRecord]
+    users: List[ExtractedUserRecord] # Mantém o Record para a UI inicial
 
 
 @dataclass
@@ -74,33 +79,32 @@ class ExtractionService:
         conta_phone: Optional[str] = None,
     ) -> ExtractionSummary:
         """Executa uma extração simples, gerando dados sintéticos persistidos."""
-
+        logger.info("Iniciando extração para grupos: %s (filtro: %s)", grupos, filtro)
         grupos_normalizados = [grupo.strip() for grupo in grupos if grupo.strip()]
         if not grupos_normalizados:
+            logger.warning("Nenhum grupo válido fornecido para extração.")
             raise ValueError("É necessário informar ao menos um grupo para extrair dados.")
 
         filtro_normalizado = filtro.lower().strip() if filtro else ""
 
-        candidatos: List[ExtractedUserRecord] = []
+        # Gera dados sintéticos
+        candidatos_sinteticos: List[Tuple[str, str, str, str, str]] = []
         for indice, grupo in enumerate(grupos_normalizados, start=1):
-            base = grupo.lower().replace(" ", "_")
-            for incremento in range(1, 6):
+            base = grupo.lower().replace(" ", "_").replace("@","")[:20] # Limita tamanho
+            for incremento in range(1, secrets.randint(5, 15)): # Numero variável de usuários
                 username = f"@{base}_{indice:02d}{incremento:02d}"
                 role = secrets.choice(self._ROLES)
                 segment = secrets.choice(self._SEGMENTS)
                 status = secrets.choice(self._STATUSES)
-                registro = ExtractedUserRecord(
-                    username=username,
-                    role=role,
-                    origin_group=grupo,
-                    segment=segment,
-                    status=status,
-                )
-                if not filtro_normalizado or filtro_normalizado in " ".join(
-                    [registro.username, registro.role, registro.origin_group]
-                ).lower():
-                    candidatos.append(registro)
+                registro_tupla = (username, role, grupo, segment, status)
 
+                if not filtro_normalizado or filtro_normalizado in " ".join(registro_tupla).lower():
+                    candidatos_sinteticos.append(registro_tupla)
+
+        logger.debug("%d candidatos sintéticos gerados.", len(candidatos_sinteticos))
+
+        # Persiste no banco de dados
+        usuarios_persistidos: List[ExtractedUser] = []
         with self._database.session() as sessao:
             account_id = self._resolver_account_id(sessao, conta_phone)
             job = ExtractionJob(
@@ -110,63 +114,92 @@ class ExtractionService:
                 created_at=datetime.utcnow(),
             )
             sessao.add(job)
-            sessao.flush()
+            sessao.flush() # Para obter job.id
+            logger.info("Job de extração %d criado.", job.id)
 
-            for usuario in candidatos:
-                sessao.add(
-                    ExtractedUser(
+            for username, role, grupo, segment, status in candidatos_sinteticos:
+                usuario_db = ExtractedUser(
                         job_id=job.id,
-                        username=usuario.username,
-                        role=usuario.role,
-                        origin_group=usuario.origin_group,
-                        segment=usuario.segment,
-                        status=usuario.status,
+                        username=username,
+                        role=role,
+                        origin_group=grupo,
+                        segment=segment,
+                        status=status,
                         created_at=datetime.utcnow(),
                     )
-                )
+                sessao.add(usuario_db)
+                usuarios_persistidos.append(usuario_db) # Guarda o objeto com ID
+
+            # Precisa dar flush de novo para obter os IDs dos usuários
+            sessao.flush()
 
             job.status = "completed"
-            job.progress = 100 if candidatos else 0
+            job.progress = 100 if usuarios_persistidos else 0
             sessao.commit()
+            logger.info("Job de extração %d concluído com %d usuários.", job.id, len(usuarios_persistidos))
 
-            return ExtractionSummary(job_id=job.id, progress=job.progress, users=candidatos)
+
+            # Cria os Records para retornar à UI, agora com ID
+            user_records = [
+                ExtractedUserRecord(
+                    id=u.id,
+                    username=u.username,
+                    role=u.role,
+                    origin_group=u.origin_group,
+                    segment=u.segment,
+                    status=u.status,
+                )
+                for u in usuarios_persistidos # Usa a lista que tem os IDs
+            ]
+
+            return ExtractionSummary(job_id=job.id, progress=job.progress, users=user_records)
 
     def list_recent_users(self, limite: int = 200) -> List[ExtractedUserRecord]:
-        """Retorna os usuários mais recentes armazenados na base local."""
-
-        with self._database.session() as sessao:
-            stmt = (
-                select(ExtractedUser)
-                .order_by(ExtractedUser.created_at.desc())
-                .limit(limite)
+        """Retorna os usuários mais recentes como Records (para UI legada)."""
+        registros_db = self.list_recent_users_with_id(limite)
+        return [
+            ExtractedUserRecord(
+                id=item.id,
+                username=item.username,
+                role=item.role,
+                origin_group=item.origin_group,
+                segment=item.segment,
+                status=item.status,
             )
-            registros = sessao.scalars(stmt).all()
-            return [
-                ExtractedUserRecord(
-                    username=item.username,
-                    role=item.role,
-                    origin_group=item.origin_group,
-                    segment=item.segment,
-                    status=item.status,
-                )
-                for item in registros
-            ]
+            for item in registros_db
+        ]
+
+    def list_recent_users_with_id(self, limite: int = 5000) -> List[ExtractedUser]:
+         """Retorna os usuários mais recentes como objetos ORM (com ID)."""
+         logger.debug("Buscando %d usuários recentes do banco.", limite)
+         with self._database.session() as sessao:
+             stmt = (
+                 select(ExtractedUser)
+                 .order_by(ExtractedUser.created_at.desc())
+                 .limit(limite)
+             )
+             registros = sessao.scalars(stmt).all()
+             logger.debug("%d usuários encontrados.", len(registros))
+             return list(registros)
+
 
     def overview(self) -> ExtractionOverview:
         """Gera um resumo com contagem de usuários e grupos distintos."""
-
+        logger.debug("Calculando overview da extração.")
         with self._database.session() as sessao:
             total_usuarios = sessao.scalar(select(func.count(ExtractedUser.id))) or 0
             total_grupos = sessao.scalar(select(func.count(func.distinct(ExtractedUser.origin_group)))) or 0
-            return ExtractionOverview(total_users=int(total_usuarios), total_groups=int(total_grupos))
+            overview = ExtractionOverview(
+                total_users=int(total_usuarios), total_groups=int(total_grupos)
+            )
+            logger.debug("Overview: %s", overview)
+            return overview
 
     @staticmethod
     def _resolver_account_id(sessao, phone: Optional[str]) -> Optional[int]:
         """Obtém o ID da conta associada ao telefone, quando possível."""
-
         if not phone:
             return None
-
         stmt = select(Account).where(Account.phone == phone)
         conta = sessao.scalars(stmt).first()
         return conta.id if conta else None
