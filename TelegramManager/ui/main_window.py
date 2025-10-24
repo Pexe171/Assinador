@@ -91,7 +91,7 @@ class MainWindow(QMainWindow):
         self._user_bank = UserBankWidget(
             extraction_service=self._container.extraction_service,
         )
-        self._reports = ReportsWidget()
+        self._reports = ReportsWidget(report_service=self._container.report_service)
         self._settings = SettingsWidget()
 
         self._dashboard.atualizar_metricas()

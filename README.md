@@ -16,9 +16,20 @@ operacional.
 - Notificações nativas via `plyer` e suporte a execução em *background*.
 - Módulo de autoatualização com validação de integridade.
 
+## Novidades da versão 1.5 (Automação)
+
+- Sistema de automação completo com motor em segundo plano e monitoramento em tempo real.
+- Agendador visual de tarefas com sincronização instantânea com o dashboard.
+- Relatórios básicos alimentados pelos dados da automação e das extrações recentes.
+- Melhorias de performance na listagem de tarefas agendadas, reduzindo reordenações desnecessárias.
+
 ## Arquitetura
 
 A arquitetura completa está detalhada em [`docs/arquitetura.md`](docs/arquitetura.md).
+
+## Notas de versão
+
+- [Versão 1.5 — Automação](docs/releases/versao-1.5.md)
 
 ## Configuração do Ambiente
 
