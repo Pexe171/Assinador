@@ -23,16 +23,22 @@ facilitar a compreensão do domínio e de aspectos técnicos.
 ## Estrutura de Pastas
 
 ```
-app/
+TelegramManager/
 ├── main.py              # Ponto de entrada Qt
-├── config.py            # Configurações tipadas
 ├── core/                # Regras de negócio e orquestração
-├── gui/                 # Camada de apresentação com PyQt6
+│   ├── automation.py    # Motor de automação e tarefas agendadas
+│   ├── container.py     # Injeção de dependências
+│   ├── database.py      # Conexão com SQLite
+│   ├── session_manager.py
+│   └── telegram_client.py
+├── ui/                  # Camada de apresentação com PyQt6
+│   ├── main_window.py   # Janela principal
+│   └── widgets/         # Componentes customizados
+├── utils/               # Utilitários (configuração, helpers, workers)
 ├── notifications/       # Integração com sistema operacional
-├── services/            # Serviços externos (Telethon, APIs)
-├── storage/             # Persistência (SQLite + SQLAlchemy)
+├── storage/             # Modelos ORM
 ├── updater/             # Autoatualização e integridade
-└── utils/               # Utilitários comuns (threads, helpers)
+└── assets/              # Ícones e temas (planejado)
 ```
 
 ## Camada de Interface (GUI)
@@ -47,13 +53,14 @@ app/
 
 ## Core e Serviços
 
-- **Container**: Contêiner de dependências simples. Facilita testes e injeta
-  configurações compartilhadas.
-- **SessionManager**: Persistência e estado das sessões conectadas. Responsável
-  por backup automático, atualização de status e restauração na inicialização.
-- **TelegramClientPool**: Pool de conexões Telethon, oferecendo APIs para
-  autenticação, extração de grupos e envio de mensagens.
-- **BackgroundWorker**: Fila de execução assíncrona com *threads* dedicadas,
+- **Container**: Contêiner de dependências simples (`core/container.py`).
+- **SessionManager**: Persistência e estado das sessões conectadas, com
+  restauração planejada (`core/session_manager.py`).
+- **TelegramClientPool**: Pool de conexões Telethon para autenticação e
+  operações críticas (`core/telegram_client.py`).
+- **AutomationEngine**: Registra tarefas e sincroniza progresso com a interface
+  (`core/automation.py`).
+- **BackgroundWorker**: Fila de execução assíncrona em `utils/async_worker.py`,
   ideal para evitar travamentos na UI.
 
 ## Persistência
@@ -80,7 +87,7 @@ app/
 
 ## Autoatualização
 
-- Módulo `app/updater/auto_updater.py` verifica periodicamente um endpoint
+- Módulo `TelegramManager/updater/auto_updater.py` verifica periodicamente um endpoint
   seguro (HTTPS) em busca de novas versões.
 - Downloads validados com checksum e assinatura digital.
 - Atualizações aplicadas após confirmação do usuário, com rollback automático
