@@ -8,8 +8,8 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QFormLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
-    QLineEdit,
     QPushButton,
     QSpinBox,
     QVBoxLayout,
@@ -33,41 +33,109 @@ class SettingsWidget(QWidget):
         titulo.setStyleSheet("font-size: 22px; font-weight: bold;")
         layout.addWidget(titulo)
 
-        layout.addWidget(self._criar_grupo_aplicacao())
-        layout.addWidget(self._criar_grupo_notificacoes())
+        layout.addWidget(self._criar_grupo_configuracoes_sistema())
+        layout.addWidget(self._criar_grupo_configuracoes_automacao())
         layout.addStretch()
         layout.addWidget(QPushButton("Salvar alterações"))
 
-    def _criar_grupo_aplicacao(self) -> QWidget:
-        grupo = QGroupBox("Preferências do aplicativo")
+    def _criar_grupo_configuracoes_sistema(self) -> QWidget:
+        grupo = QGroupBox("⚙️ Configurações do sistema")
         form = QFormLayout(grupo)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-
-        input_nome = QLineEdit("Assinador One")
-        form.addRow("Nome da workspace", input_nome)
+        form.setVerticalSpacing(12)
 
         combo_tema = QComboBox()
         combo_tema.addItems(["Automático", "Claro", "Escuro"])
-        form.addRow("Tema visual", combo_tema)
+        form.addRow("Tema", combo_tema)
 
-        spinner_intervalo = QSpinBox()
-        spinner_intervalo.setRange(1, 60)
-        spinner_intervalo.setValue(5)
-        spinner_intervalo.setSuffix(" min")
-        form.addRow("Intervalo de sincronização", spinner_intervalo)
+        combo_idioma = QComboBox()
+        combo_idioma.addItems([
+            "Português (Brasil)",
+            "Inglês (EN)",
+            "Espanhol (ES)",
+        ])
+        form.addRow("Idioma", combo_idioma)
+
+        botao_atalhos = QPushButton("Personalizar atalhos…")
+        form.addRow("Atalhos de teclado", botao_atalhos)
+
+        container_comportamento = QWidget()
+        comportamento_layout = QVBoxLayout(container_comportamento)
+        comportamento_layout.setContentsMargins(0, 0, 0, 0)
+        comportamento_layout.setSpacing(6)
+
+        check_iniciar_os = QCheckBox("Iniciar automaticamente com o sistema operacional")
+        check_iniciar_os.setChecked(True)
+        comportamento_layout.addWidget(check_iniciar_os)
+
+        check_minimizar_tray = QCheckBox("Minimizar para a bandeja após autenticar")
+        comportamento_layout.addWidget(check_minimizar_tray)
+
+        form.addRow("Comportamento", container_comportamento)
+
+        container_backup = QWidget()
+        backup_layout = QHBoxLayout(container_backup)
+        backup_layout.setContentsMargins(0, 0, 0, 0)
+        backup_layout.setSpacing(8)
+
+        check_backup = QCheckBox("Realizar backups automáticos das configurações")
+        check_backup.setChecked(True)
+        backup_layout.addWidget(check_backup)
+
+        spinner_backup = QSpinBox()
+        spinner_backup.setRange(1, 30)
+        spinner_backup.setValue(7)
+        spinner_backup.setSuffix(" dias")
+        backup_layout.addWidget(spinner_backup)
+
+        form.addRow("Backup", container_backup)
 
         return grupo
 
-    def _criar_grupo_notificacoes(self) -> QWidget:
-        grupo = QGroupBox("Alertas e automações")
+    def _criar_grupo_configuracoes_automacao(self) -> QWidget:
+        grupo = QGroupBox("🤖 Configurações de automação")
         form = QFormLayout(grupo)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setVerticalSpacing(12)
 
-        check_sons = QCheckBox("Habilitar sons do sistema")
-        check_sons.setChecked(True)
-        form.addRow("Áudio", check_sons)
+        spinner_limite = QSpinBox()
+        spinner_limite.setRange(10, 2000)
+        spinner_limite.setValue(250)
+        spinner_limite.setSuffix(" ações")
+        form.addRow("Limites por conta", spinner_limite)
 
-        check_resumo = QCheckBox("Receber resumo diário por e-mail")
-        form.addRow("Relatórios", check_resumo)
+        spinner_delay = QSpinBox()
+        spinner_delay.setRange(1, 120)
+        spinner_delay.setValue(5)
+        spinner_delay.setSuffix(" s")
+        form.addRow("Delay entre ações", spinner_delay)
+
+        container_retry = QWidget()
+        retry_layout = QHBoxLayout(container_retry)
+        retry_layout.setContentsMargins(0, 0, 0, 0)
+        retry_layout.setSpacing(8)
+
+        spinner_retry = QSpinBox()
+        spinner_retry.setRange(0, 10)
+        spinner_retry.setValue(3)
+        spinner_retry.setPrefix("Tentativas: ")
+        retry_layout.addWidget(spinner_retry)
+
+        combo_retry = QComboBox()
+        combo_retry.addItems(["Linear", "Exponencial", "Incremental"])
+        retry_layout.addWidget(combo_retry)
+
+        form.addRow("Retry policies", container_retry)
+
+        botao_filtros = QPushButton("Configurar filtros avançados")
+        form.addRow("Filtros de usuários", botao_filtros)
+
+        combo_templates = QComboBox()
+        combo_templates.addItems([
+            "Padrão equilibrado",
+            "Alta conversão",
+            "Baixo risco",
+        ])
+        form.addRow("Templates de comportamento", combo_templates)
 
         return grupo
