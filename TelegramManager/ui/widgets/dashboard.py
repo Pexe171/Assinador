@@ -87,16 +87,26 @@ class DashboardWidget(QWidget):
         layout.addWidget(titulo, 0, 0, 1, 4)
 
         # Linha 1: Cards de Métricas
-        self._cards["contas"] = self._criar_card("Contas Conectadas", "0")
-        self._cards["usuarios_banco"] = self._criar_card("Usuários no Banco", "0")
-        self._cards["grupos_monitorados"] = self._criar_card("Grupos Monitorados", "0")
-        self._cards["usuarios_adicionados"] = self._criar_card(
+        card_contas, label_contas = self._criar_card("Contas Conectadas", "0")
+        card_usuarios_banco, label_usuarios_banco = self._criar_card(
+            "Usuários no Banco", "0"
+        )
+        card_grupos_monitorados, label_grupos_monitorados = self._criar_card(
+            "Grupos Monitorados", "0"
+        )
+        card_usuarios_adicionados, label_usuarios_adicionados = self._criar_card(
             "Usuários Adicionados (Total)", "0"
         )
-        layout.addWidget(self._cards["contas"], 1, 0)
-        layout.addWidget(self._cards["usuarios_banco"], 1, 1)
-        layout.addWidget(self._cards["grupos_monitorados"], 1, 2)
-        layout.addWidget(self._cards["usuarios_adicionados"], 1, 3)
+
+        self._cards["contas"] = label_contas
+        self._cards["usuarios_banco"] = label_usuarios_banco
+        self._cards["grupos_monitorados"] = label_grupos_monitorados
+        self._cards["usuarios_adicionados"] = label_usuarios_adicionados
+
+        layout.addWidget(card_contas, 1, 0)
+        layout.addWidget(card_usuarios_banco, 1, 1)
+        layout.addWidget(card_grupos_monitorados, 1, 2)
+        layout.addWidget(card_usuarios_adicionados, 1, 3)
 
         # Linha 2: Gráfico e Status
         layout.addWidget(self._criar_grafico_automacao(), 2, 0, 1, 2)
@@ -173,7 +183,7 @@ class DashboardWidget(QWidget):
             }
         """)
 
-    def _criar_card(self, titulo: str, valor_inicial: str) -> QWidget:
+    def _criar_card(self, titulo: str, valor_inicial: str) -> tuple[QWidget, QLabel]:
         card = QFrame()
         card.setObjectName("card_metrica")
         layout = QVBoxLayout(card)
@@ -187,7 +197,7 @@ class DashboardWidget(QWidget):
         label_valor.setObjectName("card_valor")
         layout.addWidget(label_valor)
         layout.addStretch()
-        return card
+        return card, label_valor
 
     def _criar_grafico_automacao(self) -> QWidget:
         quadro = QFrame()
