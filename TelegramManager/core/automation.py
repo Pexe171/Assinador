@@ -33,12 +33,15 @@ class AutomationEngine:
         self._worker = BackgroundWorker("automation-engine")
         self._tasks: Dict[str, AutomationTask] = {}
         self._lock = Lock()
+        self._cache_ordenado: List[AutomationTask] = []
+        self._cache_sujo = True
 
     def agendar(self, tarefa: AutomationTask) -> AutomationTask:
         """Registra uma nova tarefa no motor de automação."""
 
         with self._lock:
             self._tasks[tarefa.identificador] = tarefa
+            self._cache_sujo = True
         tarefa.logs.append("Registrada no motor de automação.")
         return tarefa
 
@@ -46,8 +49,12 @@ class AutomationEngine:
         """Retorna as tarefas ordenadas pela data de execução."""
 
         with self._lock:
-            tarefas = list(self._tasks.values())
-        tarefas.sort(key=lambda item: item.agendamento)
+            if self._cache_sujo:
+                self._cache_ordenado = sorted(
+                    self._tasks.values(), key=lambda item: item.agendamento
+                )
+                self._cache_sujo = False
+            tarefas = list(self._cache_ordenado)
         return tarefas
 
     def atualizar_status(
@@ -64,8 +71,9 @@ class AutomationEngine:
             tarefa = self._tasks.get(identificador)
         if not tarefa:
             return
-        if status is not None:
+        if status is not None and status != tarefa.status:
             tarefa.status = status
+            self._cache_sujo = True
         if progresso is not None:
             tarefa.progresso = progresso
         if mensagem:
@@ -105,7 +113,9 @@ class AutomationEngine:
         """Remove uma tarefa agendada."""
 
         with self._lock:
-            self._tasks.pop(identificador, None)
+            removida = self._tasks.pop(identificador, None)
+            if removida is not None:
+                self._cache_sujo = True
 
     def shutdown(self) -> None:
         """Encerra o *worker* interno com segurança."""

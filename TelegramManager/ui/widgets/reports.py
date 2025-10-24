@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Dict, List, Tuple
 
 from PyQt6.QtCharts import (
@@ -16,7 +16,7 @@ from PyQt6.QtCharts import (
     QLineSeries,
     QValueAxis,
 )
-from PyQt6.QtCore import Qt, QDateTime
+from PyQt6.QtCore import Qt, QDateTime, QTimer
 from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -34,6 +34,13 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from TelegramManager.core.reports import (
+    AutomationSummary,
+    DailyAutomationActivity,
+    ReportService,
+)
+from TelegramManager.utils.helpers import formatar_data_humana
 
 
 @dataclass(frozen=True)
@@ -104,10 +111,15 @@ class ReportsWidget(QWidget):
         AccountPerformance("Parcerias", 620, 584, 22, 156),
     )
 
-    def __init__(self) -> None:
+    def __init__(self, report_service: ReportService | None = None) -> None:
         super().__init__()
         self._periodo_atual = "Últimos 7 dias"
+        self._report_service = report_service
+        self._resumo_labels: Dict[str, QLabel] = {}
+        self._resumo_timer: QTimer | None = None
+        self._serie_crescimento: QLineSeries | None = None
         self._montar_layout()
+        self._iniciar_timer_resumo()
 
     def _montar_layout(self) -> None:
         layout = QVBoxLayout(self)
@@ -124,6 +136,7 @@ class ReportsWidget(QWidget):
         descricao.setWordWrap(True)
         layout.addWidget(descricao)
 
+        layout.addWidget(self._criar_painel_resumo_automacao())
         layout.addWidget(self._criar_painel_resumo())
 
         abas = QTabWidget()
@@ -138,6 +151,33 @@ class ReportsWidget(QWidget):
     # ------------------------------------------------------------------
     # Painéis principais
     # ------------------------------------------------------------------
+    def _criar_painel_resumo_automacao(self) -> QWidget:
+        painel = QGroupBox("Sistema de automação")
+        layout = QGridLayout(painel)
+        layout.setSpacing(12)
+
+        indicadores = [
+            ("Tarefas registradas", "total"),
+            ("Agendadas", "agendadas"),
+            ("Em andamento", "em_andamento"),
+            ("Concluídas", "concluidas"),
+            ("Falhas", "falhas"),
+            ("Progresso médio", "progresso"),
+            ("Próxima execução", "proxima_execucao"),
+        ]
+
+        for linha, (titulo, chave) in enumerate(indicadores):
+            label_titulo = QLabel(titulo)
+            label_titulo.setStyleSheet("color: #475467;")
+            valor = QLabel("—")
+            valor.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            layout.addWidget(label_titulo, linha, 0)
+            layout.addWidget(valor, linha, 1)
+            self._resumo_labels[chave] = valor
+
+        self._atualizar_resumo_automacao()
+        return painel
+
     def _criar_painel_resumo(self) -> QWidget:
         painel = QGroupBox("Métricas consolidadas por período")
         layout = QVBoxLayout(painel)
@@ -238,29 +278,33 @@ class ReportsWidget(QWidget):
     # Builders auxiliares
     # ------------------------------------------------------------------
     def _criar_grafico_crescimento(self) -> QChartView:
-        """Cria gráfico de linha com crescimento de leads por dia."""
+        """Cria gráfico de linha com execuções concluídas por dia."""
 
         serie = QLineSeries()
-        serie.setName("Novos leads")
+        serie.setName("Execuções concluídas")
+        self._serie_crescimento = serie
 
-        hoje = date.today()
-        dados = [
-            (hoje - timedelta(days=6), 42),
-            (hoje - timedelta(days=5), 48),
-            (hoje - timedelta(days=4), 55),
-            (hoje - timedelta(days=3), 67),
-            (hoje - timedelta(days=2), 72),
-            (hoje - timedelta(days=1), 80),
-            (hoje, 96),
-        ]
+        dados = self._obter_atividade_diaria()
+        if not dados:
+            hoje = date.today()
+            dados = [
+                DailyAutomationActivity(
+                    dia=datetime.combine(hoje - timedelta(days=i), datetime.min.time()),
+                    concluidas=0,
+                )
+                for i in reversed(range(6, -1, -1))
+            ]
 
-        for dia, valor in dados:
-            qt_datetime = QDateTime(dia.year, dia.month, dia.day, 0, 0)
-            serie.append(qt_datetime.toMSecsSinceEpoch(), valor)
+        for atividade in dados:
+            qt_datetime = QDateTime(
+                atividade.dia.year, atividade.dia.month, atividade.dia.day, 0, 0
+            )
+            serie.append(qt_datetime.toMSecsSinceEpoch(), atividade.concluidas)
 
         chart = QChart()
         chart.addSeries(serie)
-        chart.setTitle("Crescimento de leads captados")
+        chart.setAnimationOptions(QChart.AnimationOption.SeriesAnimations)
+        chart.setTitle("Volume diário de execuções")
         chart.legend().setVisible(True)
 
         eixo_x = QDateTimeAxis()
@@ -271,7 +315,7 @@ class ReportsWidget(QWidget):
 
         eixo_y = QValueAxis()
         eixo_y.setLabelFormat("%.0f")
-        eixo_y.setTitleText("Quantidade")
+        eixo_y.setTitleText("Execuções")
         chart.addAxis(eixo_y, Qt.AlignmentFlag.AlignLeft)
         serie.attachAxis(eixo_y)
 
@@ -385,6 +429,78 @@ class ReportsWidget(QWidget):
     # ------------------------------------------------------------------
     # Helpers de dados
     # ------------------------------------------------------------------
+    def _iniciar_timer_resumo(self) -> None:
+        if not self._report_service:
+            return
+        self._resumo_timer = QTimer(self)
+        self._resumo_timer.setInterval(10_000)
+        self._resumo_timer.timeout.connect(self._atualizar_resumo_automacao)
+        self._resumo_timer.start()
+
+    def _atualizar_resumo_automacao(self) -> None:
+        if not self._report_service:
+            return
+        resumo: AutomationSummary = self._report_service.gerar_resumo_automacao()
+        self._definir_valor_resumo("total", self._formatar_inteiro(resumo.total))
+        self._definir_valor_resumo(
+            "agendadas", self._formatar_inteiro(resumo.agendadas)
+        )
+        self._definir_valor_resumo(
+            "em_andamento", self._formatar_inteiro(resumo.em_andamento)
+        )
+        self._definir_valor_resumo(
+            "concluidas", self._formatar_inteiro(resumo.concluidas)
+        )
+        self._definir_valor_resumo("falhas", self._formatar_inteiro(resumo.falhas))
+        self._definir_valor_resumo(
+            "progresso", f"{resumo.progresso_medio:.1f}%"
+        )
+        proxima = (
+            formatar_data_humana(resumo.proxima_execucao)
+            if resumo.proxima_execucao
+            else "Sem agendamentos"
+        )
+        self._definir_valor_resumo("proxima_execucao", proxima)
+        self._atualizar_grafico_crescimento()
+
+    def _definir_valor_resumo(self, chave: str, texto: str) -> None:
+        label = self._resumo_labels.get(chave)
+        if label:
+            label.setText(texto)
+
+    def _obter_atividade_diaria(self) -> List[DailyAutomationActivity]:
+        if not self._report_service:
+            return []
+        return self._report_service.gerar_atividade_diaria()
+
+    def _atualizar_grafico_crescimento(self) -> None:
+        if not self._report_service or not self._serie_crescimento:
+            return
+        dados = self._obter_atividade_diaria()
+        if not dados:
+            return
+        chart = self._serie_crescimento.chart()
+        self._serie_crescimento.clear()
+        for atividade in dados:
+            qt_datetime = QDateTime(
+                atividade.dia.year, atividade.dia.month, atividade.dia.day, 0, 0
+            )
+            self._serie_crescimento.append(
+                qt_datetime.toMSecsSinceEpoch(), atividade.concluidas
+            )
+        if chart:
+            eixo_x = chart.axes(Qt.AlignmentFlag.AlignBottom)
+            eixo_y = chart.axes(Qt.AlignmentFlag.AlignLeft)
+            if eixo_x:
+                inicio = min(d.dia for d in dados)
+                fim = max(d.dia for d in dados)
+                eixo_x[0].setRange(
+                    QDateTime(inicio.year, inicio.month, inicio.day, 0, 0),
+                    QDateTime(fim.year, fim.month, fim.day, 0, 0),
+                )
+            if eixo_y:
+                eixo_y[0].setRange(0, max(max(d.concluidas for d in dados), 1))
+
     def _atualizar_metricas_periodo(self, periodo: str) -> None:
         self._periodo_atual = periodo
         metricas = self._PERIODOS.get(periodo)

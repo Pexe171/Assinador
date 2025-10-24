@@ -7,6 +7,7 @@ from functools import cached_property
 from TelegramManager.core.automation import AutomationEngine
 from TelegramManager.core.database import Database
 from TelegramManager.core.extraction import ExtractionService
+from TelegramManager.core.reports import ReportService
 from TelegramManager.core.session_manager import SessionManager
 from TelegramManager.core.telegram_client import TelegramClientPool
 from TelegramManager.utils.config import AppConfig
@@ -41,3 +42,10 @@ class Container:
     @cached_property
     def extraction_service(self) -> ExtractionService:
         return ExtractionService(database=self.database)
+
+    @cached_property
+    def report_service(self) -> ReportService:
+        return ReportService(
+            automation_engine=self.automation_engine,
+            extraction_service=self.extraction_service,
+        )
