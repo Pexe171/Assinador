@@ -43,7 +43,10 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(container.config.app_name)
         self.resize(1366, 800) # Aumentado tamanho padrão
-        self.setStyleSheet("QMainWindow { background-color: #f8f9fb; }") # Fundo geral
+        # Aplica um tema escuro global logo na inicialização
+        self.setStyleSheet(
+            "QMainWindow { background-color: #0b1120; color: #e2e8f0; }"
+        )
 
         self._views: Dict[str, QWidget] = {}
 
@@ -80,7 +83,9 @@ class MainWindow(QMainWindow):
         # --- Área de Conteúdo Principal ---
         self._conteudo = QStackedWidget()
         self._conteudo.setObjectName("mainContentArea") # ID para estilo
-        self._conteudo.setStyleSheet("#mainContentArea { background-color: #ffffff; }") # Fundo branco
+        self._conteudo.setStyleSheet(
+            "#mainContentArea { background-color: #111827; }"
+        )
 
         layout.addWidget(self._navegacao)
         layout.addWidget(self._conteudo, stretch=1) # Conteúdo ocupa o resto
@@ -94,35 +99,34 @@ class MainWindow(QMainWindow):
          """Aplica CSS-like styles à barra de navegação."""
          self._navegacao.setStyleSheet("""
             QListWidget#sidebarNavigation {
-                background-color: #ffffff; /* Fundo branco */
-                border-right: 1px solid #e2e8f0; /* Borda direita suave */
-                padding-top: 15px; /* Espaço no topo */
-                outline: 0px; /* Remove foco visual padrão */
+                background-color: #0f172a; /* Fundo escuro */
+                border-right: 1px solid #1f2937;
+                padding-top: 15px;
+                outline: 0px;
             }
             QListWidget#sidebarNavigation::item {
-                padding: 14px 25px; /* Mais padding interno */
-                border-radius: 8px; /* Cantos arredondados */
-                margin: 4px 15px; /* Espaço vertical e horizontal */
-                color: #4a5568; /* Cor do texto padrão */
-                font-size: 14px; /* Tamanho da fonte */
-                font-weight: 500; /* Peso médio */
+                padding: 14px 25px;
+                border-radius: 10px;
+                margin: 4px 15px;
+                color: #e2e8f0;
+                font-size: 14px;
+                font-weight: 500;
             }
             QListWidget#sidebarNavigation::item:hover {
-                background-color: #f0f4f8; /* Fundo suave ao passar o mouse */
-                color: #2d3748; /* Texto escuro no hover */
+                background-color: #1e293b;
+                color: #f8fafc;
             }
             QListWidget#sidebarNavigation::item:selected {
-                background-color: #4299e1; /* Azul vibrante para seleção */
-                color: white; /* Texto branco */
-                font-weight: 600; /* Negrito */
+                background-color: #38bdf8;
+                color: #0f172a;
+                font-weight: 600;
             }
-            /* Remove a borda pontilhada ao focar um item */
             QListWidget#sidebarNavigation:focus {
                 outline: none;
             }
              QListWidget#sidebarNavigation::item:focus {
                 outline: none;
-                border: none; /* Garante que não haja borda de foco */
+                border: none;
             }
 
         """)
@@ -133,9 +137,9 @@ class MainWindow(QMainWindow):
         barra = QStatusBar()
         barra.setStyleSheet("""
             QStatusBar {
-                background-color: #ffffff;
-                border-top: 1px solid #e2e8f0;
-                color: #718096; /* Cinza médio */
+                background-color: #0f172a;
+                border-top: 1px solid #1f2937;
+                color: #94a3b8;
                 font-size: 12px;
                 padding-left: 10px;
             }
