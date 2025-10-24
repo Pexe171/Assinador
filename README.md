@@ -1,41 +1,53 @@
-# Gerenciador de Contas WhatsApp
+# Assinador Desktop
 
-Aplicação em Electron para gerir múltiplas contas do WhatsApp com fila de mensagens por conta. Utiliza [Electron](https://www.electronjs.org/), [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) e [qrcode](https://www.npmjs.com/package/qrcode) para oferecer uma interface simples de conexão.
+Aplicação desktop moderna para gerenciar múltiplas contas do Telegram e executar
+mapeamentos de grupos com alto nível de observabilidade. Construída com Python e
+PyQt6, integra Telethon, SQLAlchemy e notificações nativas do sistema
+operacional.
 
-## Funcionalidades
-- Conexão de múltiplas contas de WhatsApp.
-- Exibição do estado de cada conta (Conectado, Reconectando, Desconectado).
-- Persistência local de dados com *electron-store*.
+## Principais Recursos
 
-## Requisitos
-- [Node.js](https://nodejs.org/) 18 ou superior.
-- NPM ou Yarn.
+- Interface com abas (Dashboard, Contas e Logs) e painel lateral para troca
+  rápida entre contas.
+- Autenticação de contas com suporte a 2FA e persistência de sessões.
+- Execução de tarefas assíncronas usando *threads* e filas para evitar travamentos.
+- Console de logs em tempo real dentro da própria interface.
+- Exportação planejada para CSV/JSON/Excel a partir dos dados mapeados.
+- Notificações nativas via `plyer` e suporte a execução em *background*.
+- Módulo de autoatualização com validação de integridade.
 
-## Instalação
-```bash
-npm install
-```
+## Arquitetura
 
-## Uso
-1. Inicie o aplicativo em modo desenvolvimento:
+A arquitetura completa está detalhada em [`docs/arquitetura.md`](docs/arquitetura.md).
+
+## Configuração do Ambiente
+
+1. Instale Python 3.11 ou superior e crie um ambiente virtual:
    ```bash
-   npm start
+   python -m venv .venv
+   source .venv/bin/activate  # Linux/macOS
+   .venv\\Scripts\\activate   # Windows
    ```
-2. No primeiro acesso de cada conta de WhatsApp, será exibido um QR Code para pareamento.
+2. Instale as dependências:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Configure variáveis de ambiente do Telegram (API ID e HASH).
 
-## Build
-Gere binários para distribuição com:
+## Execução
+
 ```bash
-npm run pack   # build sem empacotamento
-npm run dist   # executáveis para a plataforma
+python -m app.main
 ```
-Os artefatos são gerados em `dist_electron/`.
 
 ## Testes
-Os utilitários possuem testes básicos executados com o runner nativo do Node.js:
+
 ```bash
-npm test
+pytest
 ```
 
-## Licença
-Distribuído sob a licença ISC. Consulte o arquivo `package.json` para detalhes.
+## Build
+
+A distribuição pode ser gerada com ferramentas como PyInstaller ou Briefcase.
+O módulo `app/updater/auto_updater.py` prevê atualizações incrementais após a
+instalação inicial.
