@@ -39,8 +39,11 @@ class TelegramClientPool:
         if not self._config.telethon_api_id or not self._config.telethon_api_hash:
             raise RuntimeError("Credenciais do Telegram não configuradas")
 
+        session_info = self._session_manager.get_session(phone)
+        session_string = session_info.session_string if session_info else None
+
         client = TelegramClient(
-            StringSession(),
+            StringSession(session_string) if session_string else StringSession(),
             api_id=int(self._config.telethon_api_id),
             api_hash=self._config.telethon_api_hash,
         )

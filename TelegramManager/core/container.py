@@ -6,6 +6,7 @@ from __future__ import annotations
 from functools import cached_property
 
 from TelegramManager.core.addition_manager import AdditionManager
+from TelegramManager.core.authentication import AuthenticationService
 from TelegramManager.core.automation import AutomationEngine
 from TelegramManager.core.database import Database
 from TelegramManager.core.extraction import ExtractionService
@@ -51,4 +52,8 @@ class Container:
             pool=self.telegram_pool,
             engine=self.automation_engine,
         )
+
+    @cached_property
+    def authentication_service(self) -> AuthenticationService:
+        return AuthenticationService(config=self._config, session_manager=self.session_manager)
 

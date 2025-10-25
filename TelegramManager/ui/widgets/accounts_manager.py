@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging # Adicionado para logging
 from dataclasses import dataclass, field
 from typing import Callable, Dict
@@ -199,6 +200,11 @@ class AccountsManagerWidget(QWidget):
             }
             SessionFormWidget QPushButton:hover {
                 background-color: #e2e8f0;
+            }
+            SessionFormWidget QLabel#qrHelperLabel {
+                margin-top: 16px;
+                font-size: 12px;
+                color: #94a3b8;
             }
 
             /* Frame da Lista */

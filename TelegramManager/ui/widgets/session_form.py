@@ -6,6 +6,7 @@ from typing import Callable
 
 from PyQt6.QtWidgets import (
     QFormLayout,
+    QLabel,
     QLineEdit,
     QPushButton,
     QVBoxLayout,
@@ -14,6 +15,7 @@ from PyQt6.QtWidgets import (
 
 from TelegramManager.core.container import Container
 from TelegramManager.core.session_manager import SessionInfo
+from TelegramManager.ui.dialogs.qr_login import QrLoginDialog
 
 
 class SessionFormWidget(QWidget):
@@ -40,6 +42,14 @@ class SessionFormWidget(QWidget):
         self._botao_autenticar = QPushButton("Iniciar autenticação")
         self._botao_autenticar.clicked.connect(self._iniciar_autenticacao)
         layout.addWidget(self._botao_autenticar)
+
+        separador = QLabel("Ou utilize o QR Code do Telegram Desktop")
+        separador.setObjectName("qrHelperLabel")
+        layout.addWidget(separador)
+
+        self._botao_qr = QPushButton("Autenticar via QR Code")
+        self._botao_qr.clicked.connect(self._abrir_autenticacao_qr)
+        layout.addWidget(self._botao_qr)
         layout.addStretch()
 
     def _iniciar_autenticacao(self) -> None:
@@ -55,3 +65,12 @@ class SessionFormWidget(QWidget):
     def _limpar_campos(self) -> None:
         self._input_phone.clear()
         self._input_display.clear()
+
+    def _abrir_autenticacao_qr(self) -> None:
+        dialogo = QrLoginDialog(container=self._container, parent=self)
+        dialogo.login_completed.connect(self._on_qr_concluido)
+        dialogo.exec()
+
+    def _on_qr_concluido(self, session: SessionInfo) -> None:
+        self._on_create(session)
+        self._limpar_campos()
