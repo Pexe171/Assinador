@@ -4,3 +4,4 @@ SQLAlchemy>=2.0
 pydantic>=2.5
 plyer>=2.1
 requests>=2.31
+opencv-python>=4.9
