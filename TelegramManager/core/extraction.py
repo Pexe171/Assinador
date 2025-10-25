@@ -7,7 +7,7 @@ import logging
 import secrets
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 
 from sqlalchemy import func, select
 
@@ -44,6 +44,17 @@ class ExtractionOverview:
 
     total_users: int
     total_groups: int
+
+
+@dataclass(frozen=True)
+class SyncedGroup:
+    """Representa um grupo já sincronizado com o banco local."""
+
+    name: str
+    total_members: int
+    last_sync: datetime | None
+    account_phone: str | None
+    account_display_name: str | None
 
 
 class ExtractionService:
@@ -170,17 +181,17 @@ class ExtractionService:
         ]
 
     def list_recent_users_with_id(self, limite: int = 5000) -> List[ExtractedUser]:
-         """Retorna os usuários mais recentes como objetos ORM (com ID)."""
-         logger.debug("Buscando %d usuários recentes do banco.", limite)
-         with self._database.session() as sessao:
-             stmt = (
-                 select(ExtractedUser)
-                 .order_by(ExtractedUser.created_at.desc())
-                 .limit(limite)
-             )
-             registros = sessao.scalars(stmt).all()
-             logger.debug("%d usuários encontrados.", len(registros))
-             return list(registros)
+        """Retorna os usuários mais recentes como objetos ORM (com ID)."""
+        logger.debug("Buscando %d usuários recentes do banco.", limite)
+        with self._database.session() as sessao:
+            stmt = (
+                select(ExtractedUser)
+                .order_by(ExtractedUser.created_at.desc())
+                .limit(limite)
+            )
+            registros = sessao.scalars(stmt).all()
+            logger.debug("%d usuários encontrados.", len(registros))
+            return list(registros)
 
 
     def overview(self) -> ExtractionOverview:
@@ -194,6 +205,49 @@ class ExtractionService:
             )
             logger.debug("Overview: %s", overview)
             return overview
+
+    def list_synced_groups(
+        self, *, account_phone: Optional[str] = None
+    ) -> List[SyncedGroup]:
+        """Lista os grupos já sincronizados, opcionalmente filtrando por conta."""
+
+        logger.debug("Listando grupos sincronizados (conta=%s)", account_phone)
+        with self._database.session() as sessao:
+            stmt = (
+                select(
+                    ExtractedUser.origin_group.label("group_name"),
+                    func.count(ExtractedUser.id).label("member_count"),
+                    func.max(ExtractionJob.created_at).label("last_sync"),
+                    Account.phone.label("phone"),
+                    Account.display_name.label("display_name"),
+                )
+                .join(ExtractionJob, ExtractedUser.job_id == ExtractionJob.id)
+                .join(Account, ExtractionJob.account_id == Account.id, isouter=True)
+                .group_by(
+                    ExtractedUser.origin_group,
+                    Account.phone,
+                    Account.display_name,
+                )
+                .order_by(func.max(ExtractionJob.created_at).desc())
+            )
+            if account_phone:
+                stmt = stmt.where(Account.phone == account_phone)
+
+            resultados = sessao.execute(stmt).all()
+
+        grupos: List[SyncedGroup] = []
+        for row in resultados:
+            grupos.append(
+                SyncedGroup(
+                    name=row.group_name,
+                    total_members=int(row.member_count or 0),
+                    last_sync=row.last_sync,
+                    account_phone=row.phone,
+                    account_display_name=row.display_name,
+                )
+            )
+        logger.debug("%d grupos sincronizados encontrados.", len(grupos))
+        return grupos
 
     @staticmethod
     def _resolver_account_id(sessao, phone: Optional[str]) -> Optional[int]:

@@ -60,8 +60,6 @@ TelegramManager/
   operações críticas (`core/telegram_client.py`).
 - **AutomationEngine**: Registra tarefas, mantém cache ordenado de agendamentos e
   sincroniza progresso com a interface (`core/automation.py`).
-- **ReportService**: Consolida métricas de automação e extração para o painel de
-  relatórios (`core/reports.py`).
 - **BackgroundWorker**: Fila de execução assíncrona em `utils/async_worker.py`,
   ideal para evitar travamentos na UI.
 
@@ -98,8 +96,8 @@ TelegramManager/
 ## Qualidade e Observabilidade
 
 - Logging centralizado com rotação diária.
-- Métricas enviadas para `DashboardWidget` via *signals* Qt e resumo automático
-  nos relatórios.
+- Métricas enviadas para `DashboardWidget` via *signals* Qt, facilitando a
+  visualização centralizada do progresso.
 - Testes unitários com `pytest` e `pytest-qt`.
 - Pipeline CI com lint (ruff), type checking (mypy) e testes.
 

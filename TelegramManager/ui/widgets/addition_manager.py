@@ -42,7 +42,7 @@ from TelegramManager.core.addition_manager import (
 )
 from TelegramManager.core.automation import TaskStatus
 from TelegramManager.core.container import Container
-from TelegramManager.core.extraction import ExtractedUserRecord
+from TelegramManager.core.extraction import ExtractedUserRecord, SyncedGroup
 from TelegramManager.notifications.dispatcher import NotificationDispatcher
 
 if TYPE_CHECKING:
@@ -70,6 +70,7 @@ class AdditionManagerWidget(QWidget):
 
         self._all_users: List[ExtractedUserRecord] = []
         self._selected_users: List[ExtractedUserRecord] = []
+        self._grupos_disponiveis: List[SyncedGroup] = []
 
         self._current_job_monitor: AdditionJobMonitor | None = None
         self._monitor_timer = QTimer(self)
@@ -113,6 +114,8 @@ class AdditionManagerWidget(QWidget):
                 )
         logger.debug("%d contas carregadas no ComboBox", self._combo_contas.count())
 
+        self._atualizar_grupos_disponiveis()
+
         # Carrega usuários do banco
         try:
             self._all_users = self._extraction_service.list_recent_users(limite=5000)
@@ -121,6 +124,59 @@ class AdditionManagerWidget(QWidget):
         except Exception as e:
             logger.exception("Erro ao carregar usuários do banco para AdditionManager")
             self._notifications.notify("Erro", f"Não foi possível carregar usuários: {e}")
+
+
+    def _atualizar_grupos_disponiveis(self) -> None:
+        """Atualiza a lista de grupos sincronizados para a conta selecionada."""
+
+        session: SessionInfo | None = self._combo_contas.currentData()
+        phone = session.phone if session else None
+
+        try:
+            self._grupos_disponiveis = self._extraction_service.list_synced_groups(
+                account_phone=phone
+            )
+        except Exception as exc:
+            logger.exception("Erro ao listar grupos sincronizados")
+            self._combo_grupo_destino.blockSignals(True)
+            self._combo_grupo_destino.clear()
+            self._combo_grupo_destino.addItem(
+                "Não foi possível carregar os grupos", None
+            )
+            self._combo_grupo_destino.setEnabled(False)
+            self._combo_grupo_destino.blockSignals(False)
+            self._notifications.notify(
+                "Erro",
+                "Não foi possível carregar os grupos sincronizados: %s" % exc,
+            )
+            return
+
+        self._combo_grupo_destino.blockSignals(True)
+        self._combo_grupo_destino.clear()
+
+        if not self._grupos_disponiveis:
+            self._combo_grupo_destino.addItem(
+                "Nenhum grupo sincronizado disponível", None
+            )
+            self._combo_grupo_destino.setEnabled(False)
+        else:
+            self._combo_grupo_destino.addItem("Selecione um grupo", None)
+            for grupo in self._grupos_disponiveis:
+                conta_label = grupo.account_display_name or "Conta não informada"
+                membros_txt = (
+                    f"{grupo.total_members} usuários"
+                    if grupo.total_members
+                    else "Sem usuários no banco"
+                )
+                if session is None:
+                    texto = f"{grupo.name} • {conta_label} ({membros_txt})"
+                else:
+                    texto = f"{grupo.name} ({membros_txt})"
+                self._combo_grupo_destino.addItem(texto, grupo.name)
+            self._combo_grupo_destino.setEnabled(True)
+
+        self._combo_grupo_destino.blockSignals(False)
+        self._atualizar_contador_selecao()
 
 
     def _filtrar_usuarios(self) -> None:
@@ -162,7 +218,8 @@ class AdditionManagerWidget(QWidget):
             if self._tabela_usuarios.item(i, 0).checkState() == Qt.CheckState.Checked:
                 count += 1
         self._label_contador.setText(f"{count} usuários selecionados")
-        self._botao_ir_passo_2.setEnabled(count > 0)
+        grupo_selecionado = bool(self._combo_grupo_destino.currentData())
+        self._botao_ir_passo_2.setEnabled(count > 0 and grupo_selecionado)
 
     def _selecionar_todos(self, state: int) -> None:
         """Marca ou desmarca todos os checkboxes visíveis."""
@@ -185,13 +242,20 @@ class AdditionManagerWidget(QWidget):
         form_destino.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         self._combo_contas = QComboBox()
+        self._combo_contas.currentIndexChanged.connect(
+            lambda *_: self._atualizar_grupos_disponiveis()
+        )
         form_destino.addRow("Usar a conta:", self._combo_contas)
 
-        self._input_grupo_destino = QLineEdit()
-        self._input_grupo_destino.setPlaceholderText(
-            "Ex: @meu_grupo_alvo ou https://t.me/joinchat/..."
+        self._combo_grupo_destino = QComboBox()
+        self._combo_grupo_destino.setEnabled(False)
+        self._combo_grupo_destino.setPlaceholderText(
+            "Sincronize uma conta para listar os grupos disponíveis"
         )
-        form_destino.addRow("Grupo de Destino:", self._input_grupo_destino)
+        self._combo_grupo_destino.currentIndexChanged.connect(
+            lambda *_: self._atualizar_contador_selecao()
+        )
+        form_destino.addRow("Grupo de Destino:", self._combo_grupo_destino)
         layout.addWidget(grupo_destino)
 
         # 2. Seleção de Usuários (Filtros e Tabela)
@@ -256,15 +320,18 @@ class AdditionManagerWidget(QWidget):
         logger.debug("Validando e indo para o passo 2...")
         # Valida conta e grupo
         self._current_session: SessionInfo | None = self._combo_contas.currentData()
-        self._target_group_str = self._input_grupo_destino.text().strip()
+        grupo_selecionado = self._combo_grupo_destino.currentData()
+        self._target_group_str = (grupo_selecionado or "").strip()
 
         if not self._current_session:
             self._notifications.notify("Erro", "Nenhuma conta do Telegram selecionada.")
             logger.warning("Nenhuma conta selecionada.")
             return
         if not self._target_group_str:
-            self._notifications.notify("Erro", "O grupo de destino não pode estar vazio.")
-            logger.warning("Grupo de destino vazio.")
+            self._notifications.notify(
+                "Erro", "Selecione um grupo sincronizado para continuar."
+            )
+            logger.warning("Nenhum grupo de destino selecionado.")
             return
 
         # Coleta usuários selecionados
@@ -566,7 +633,8 @@ class AdditionManagerWidget(QWidget):
         self._botao_nova_operacao.setEnabled(False)
         self._botao_pausar.setEnabled(False) # Começa desativado
         self._botao_parar.setEnabled(False) # Começa desativado
-        self._input_grupo_destino.clear()
+        if self._combo_grupo_destino.count() > 0:
+            self._combo_grupo_destino.setCurrentIndex(0)
         self._filtro_nome.clear()
         self._filtro_grupo_origem.clear()
 

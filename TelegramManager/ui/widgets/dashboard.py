@@ -3,13 +3,11 @@
 
 from __future__ import annotations
 
-import importlib.util
 import logging
 from datetime import datetime
-from typing import Iterable, List, Optional
+from typing import Dict, List, Optional
 
 from PyQt6.QtCore import QSize, QTimer, Qt
-from PyQt6.QtGui import QIcon, QPainter # QIcon adicionado
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QFrame,
@@ -27,23 +25,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from TelegramManager.core.automation import AutomationTask, TaskStatus
+from TelegramManager.core.addition_manager import AdditionOverview
+from TelegramManager.core.automation import TaskStatus
 from TelegramManager.core.container import Container
+from TelegramManager.core.extraction import SyncedGroup
 from TelegramManager.storage import AdditionJob
 from TelegramManager.utils.helpers import formatar_data_humana
-
-# Tentativa de carregar PyQtGraph
-_pyqtgraph_spec = importlib.util.find_spec("pyqtgraph")
-if _pyqtgraph_spec:
-    try:
-        import pyqtgraph as pg # type: ignore
-
-        pg.setConfigOption("background", (248, 249, 251)) # Cor de fundo mais clara
-        pg.setConfigOption("foreground", "k")
-    except ImportError:
-        pg = None
-else:
-    pg = None
 
 # Tentativa de carregar psutil
 _psutil_spec = importlib.util.find_spec("psutil")
@@ -65,15 +52,13 @@ class DashboardWidget(QWidget):
         super().__init__()
         self._container = container
         self._extraction_service = container.extraction_service
-        self._report_service = container.report_service
         self._addition_manager = container.addition_manager
-        self._cards: dict[str, QLabel] = {}
+        self._cards: Dict[str, QLabel] = {}
         self._timeline: QListWidget
-        self._plot_widget: Optional[pg.PlotWidget] = None
-        self._plot_item: Optional[pg.PlotDataItem] = None
         self._status_barra: QProgressBar
-        self._tabela_tarefas: QTableWidget
+        self._tabela_grupos: QTableWidget
         self._tabela_adicoes: QTableWidget
+        self._lista_resumo_grupos: QListWidget
 
         self._montar_layout()
         self._aplicar_estilos() # Centraliza estilos
@@ -124,12 +109,12 @@ class DashboardWidget(QWidget):
         layout.addWidget(card_grupos, 1, 2)
         layout.addWidget(card_adicionados, 1, 3)
 
-        # --- Linha 2: Gráfico e Status ---
-        layout.addWidget(self._criar_grafico_automacao(), 2, 0, 1, 2) # Ocupa 2 colunas
+        # --- Linha 2: Resumo e Status ---
+        layout.addWidget(self._criar_resumo_grupos(), 2, 0, 1, 2) # Ocupa 2 colunas
         layout.addWidget(self._criar_status_sistema(), 2, 2, 1, 2) # Ocupa 2 colunas
 
         # --- Linha 3: Tabelas ---
-        layout.addWidget(self._criar_tabela_automacoes(), 3, 0, 1, 2)
+        layout.addWidget(self._criar_tabela_grupos(), 3, 0, 1, 2)
         layout.addWidget(self._criar_tabela_adicoes(), 3, 2, 1, 2)
 
         # --- Linha 4: Logs ---
@@ -302,37 +287,31 @@ class DashboardWidget(QWidget):
 
         return card, label_valor
 
-    def _criar_grafico_automacao(self) -> QWidget:
-        """Cria o painel com o gráfico de atividade."""
+    def _criar_resumo_grupos(self) -> QWidget:
+        """Cria o painel de resumo dos grupos sincronizados por conta."""
+
         quadro = QFrame()
         quadro.setObjectName("quadro_painel")
         layout = QVBoxLayout(quadro)
-        layout.setSpacing(10) # Aumenta espaçamento interno
+        layout.setSpacing(10)
 
-        titulo = QLabel("Atividade Diária (Automações Concluídas)")
+        titulo = QLabel("Grupos sincronizados por conta")
         titulo.setObjectName("titulo_painel")
         layout.addWidget(titulo)
 
-        if pg:
-            self._plot_widget = pg.PlotWidget()
-            # Ajustes visuais no gráfico
-            self._plot_widget.showGrid(x=True, y=True, alpha=0.3)
-            self._plot_widget.getAxis('left').setTextPen(color='#4a5568')
-            self._plot_widget.getAxis('bottom').setTextPen(color='#4a5568')
+        descricao = QLabel(
+            "Veja rapidamente quantos grupos cada conta disponibilizou e o volume de usuários já no banco."
+        )
+        descricao.setWordWrap(True)
+        descricao.setStyleSheet("color: #64748b;")
+        layout.addWidget(descricao)
 
-            self._plot_item = self._plot_widget.plot(
-                pen=pg.mkPen(color="#3182ce", width=2.5), # Azul mais forte, linha mais grossa
-                symbol='o', # Círculo
-                symbolPen=pg.mkPen(color="#3182ce"),
-                symbolBrush=pg.mkBrush(color="#63b3ed"), # Preenchimento azul claro
-                symbolSize=9,
-            )
-            layout.addWidget(self._plot_widget)
-        else:
-            msg = QLabel("Biblioteca 'pyqtgraph' não encontrada.\nInstale com 'pip install pyqtgraph' para ver o gráfico.")
-            msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            msg.setStyleSheet("color: #718096;")
-            layout.addWidget(msg)
+        self._lista_resumo_grupos = QListWidget()
+        self._lista_resumo_grupos.setObjectName("lista_resumo_grupos")
+        self._lista_resumo_grupos.setAlternatingRowColors(True)
+        self._lista_resumo_grupos.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        layout.addWidget(self._lista_resumo_grupos, stretch=1)
+
         return quadro
 
     def _criar_status_sistema(self) -> QWidget:
@@ -387,23 +366,34 @@ class DashboardWidget(QWidget):
         tabela.setShowGrid(False) # Remove gridlines internas, usa borda inferior
         return tabela
 
-    def _criar_tabela_automacoes(self) -> QWidget:
-        """Cria o painel com a tabela de próximas automações."""
+    def _criar_tabela_grupos(self) -> QWidget:
+        """Cria o painel com a tabela de grupos sincronizados."""
+
         quadro = QFrame()
         quadro.setObjectName("quadro_painel")
         layout = QVBoxLayout(quadro)
         layout.setSpacing(10)
 
-        titulo = QLabel("Próximas Automações Agendadas")
+        titulo = QLabel("Grupos disponíveis no banco")
         titulo.setObjectName("titulo_painel")
         layout.addWidget(titulo)
 
-        self._tabela_tarefas = self._criar_tabela_base(["Tarefa", "Grupo", "Execução"])
-        self._tabela_tarefas.horizontalHeader().setStretchLastSection(False) # Ajusta colunas
-        self._tabela_tarefas.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self._tabela_tarefas.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self._tabela_tarefas.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents) # Data/Hora
-        layout.addWidget(self._tabela_tarefas)
+        self._tabela_grupos = self._criar_tabela_base(
+            ["Grupo", "Conta", "Última sincronização", "Usuários"]
+        )
+        self._tabela_grupos.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )
+        self._tabela_grupos.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )
+        self._tabela_grupos.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.ResizeToContents
+        )
+        self._tabela_grupos.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.ResizeToContents
+        )
+        layout.addWidget(self._tabela_grupos)
         return quadro
 
     def _criar_tabela_adicoes(self) -> QWidget:
@@ -454,10 +444,6 @@ class DashboardWidget(QWidget):
         try:
             self.atualizar_metricas()
             self.atualizar_metricas_adicao()
-            # As tarefas de automação são atualizadas por sinal, mas podemos forçar aqui
-            # se necessário ou se o sinal não estiver implementado.
-            if hasattr(self._container, 'automation_engine'): # Verifica se existe
-                 self.atualizar_agendamentos(self._container.automation_engine.listar())
 
         except Exception as e:
             logger.exception("Erro ao atualizar dados dinâmicos do dashboard")
@@ -476,37 +462,80 @@ class DashboardWidget(QWidget):
             logger.error("Falha ao obter overview da extração: %s", e)
             self._cards["usuarios_banco"].setText("Erro")
             self._cards["grupos_monitorados"].setText("Erro")
+        try:
+            grupos = self._extraction_service.list_synced_groups()
+        except Exception as e_grupos:
+            logger.error("Falha ao listar grupos sincronizados: %s", e_grupos)
+            grupos = []
 
-        # Atualiza gráfico
-        if self._plot_item and pg:
-            try:
-                atividade = self._report_service.gerar_atividade_diaria()
-                x = [d.dia.timestamp() for d in atividade]
-                y = [d.concluidas for d in atividade]
-                if x:
-                    self._plot_item.setData(x, y)
-                    try:
-                        axis = self._plot_widget.getAxis("bottom")
-                        # Cria ticks apenas para algumas datas para não sobrecarregar
-                        tick_values = x[::max(1, len(x)//5)] # A cada 5 pontos aprox.
-                        tick_labels = [datetime.fromtimestamp(ts).strftime("%d/%m") for ts in tick_values]
-                        ticks = [list(zip(tick_values, tick_labels))]
-                        axis.setTicks(ticks)
-                    except Exception as e_axis:
-                        logger.warning("Erro ao atualizar eixo do gráfico: %s", e_axis)
-                else:
-                     self._plot_item.setData([], []) # Limpa o gráfico se não há dados
-            except Exception as e_plot:
-                 logger.error("Falha ao gerar dados de atividade diária: %s", e_plot)
-                 self._plot_item.setData([], [])
+        self._preencher_resumo_grupos(grupos)
+        self._popular_tabela_grupos(grupos)
 
-        self._registrar_atividade("Métricas de contas e extração atualizadas.")
+        self._registrar_atividade("Métricas de contas e grupos atualizadas.")
+
+    def _preencher_resumo_grupos(self, grupos: List[SyncedGroup]) -> None:
+        """Atualiza a lista resumida com contagem de grupos por conta."""
+
+        self._lista_resumo_grupos.clear()
+        if not grupos:
+            self._lista_resumo_grupos.addItem(
+                "Nenhum grupo sincronizado até o momento."
+            )
+            return
+
+        agregados: Dict[str, Dict[str, int | str]] = {}
+        for grupo in grupos:
+            chave = grupo.account_phone or grupo.account_display_name or "—"
+            entrada = agregados.setdefault(
+                chave,
+                {
+                    "nome": grupo.account_display_name
+                    or grupo.account_phone
+                    or "Conta não identificada",
+                    "grupos": 0,
+                    "membros": 0,
+                },
+            )
+            entrada["grupos"] += 1
+            entrada["membros"] += grupo.total_members
+
+        for dados in sorted(agregados.values(), key=lambda item: str(item["nome"]).lower()):
+            texto = (
+                f"{dados['nome']} • {dados['grupos']} grupos • "
+                f"{dados['membros']} usuários"
+            )
+            self._lista_resumo_grupos.addItem(texto)
+
+    def _popular_tabela_grupos(self, grupos: List[SyncedGroup]) -> None:
+        """Preenche a tabela detalhada de grupos sincronizados."""
+
+        self._tabela_grupos.setRowCount(len(grupos))
+        for linha, grupo in enumerate(grupos):
+            conta = "—"
+            if grupo.account_display_name:
+                conta = grupo.account_display_name
+                if grupo.account_phone:
+                    conta = f"{conta} ({grupo.account_phone})"
+            elif grupo.account_phone:
+                conta = grupo.account_phone
+
+            ultima = (
+                formatar_data_humana(grupo.last_sync) if grupo.last_sync else "—"
+            )
+            membros = f"{grupo.total_members:,}".replace(",", ".")
+
+            self._tabela_grupos.setItem(linha, 0, QTableWidgetItem(grupo.name))
+            self._tabela_grupos.setItem(linha, 1, QTableWidgetItem(conta))
+            self._tabela_grupos.setItem(linha, 2, QTableWidgetItem(ultima))
+            self._tabela_grupos.setItem(linha, 3, QTableWidgetItem(membros))
 
     def atualizar_metricas_adicao(self) -> None:
         """Atualiza os cards e tabelas da função de Adição."""
         try:
-            resumo = self._report_service.gerar_resumo_adicoes()
-            self._cards["usuarios_adicionados"].setText(f"{resumo.total_adicionados:,}".replace(",", "."))
+            resumo: AdditionOverview = self._addition_manager.overview()
+            self._cards["usuarios_adicionados"].setText(
+                f"{resumo.total_success:,}".replace(",", ".")
+            )
         except Exception as e:
             logger.error("Falha ao gerar resumo de adições: %s", e)
             self._cards["usuarios_adicionados"].setText("Erro")
@@ -562,22 +591,6 @@ class DashboardWidget(QWidget):
         except Exception as e_table:
             logger.exception("Erro ao atualizar tabela de adições")
             self._registrar_atividade(f"Erro ao carregar operações de adição: {e_table}")
-
-    def atualizar_agendamentos(self, tarefas: Iterable[AutomationTask]) -> None:
-        """Atualiza a tabela de próximas tarefas de automação."""
-        tarefas_agendadas = sorted(
-            [t for t in tarefas if t.status == TaskStatus.SCHEDULED],
-            key=lambda tarefa: tarefa.agendamento,
-        )
-        self._tabela_tarefas.setRowCount(len(tarefas_agendadas))
-        for linha, tarefa in enumerate(tarefas_agendadas):
-            self._tabela_tarefas.setItem(linha, 0, QTableWidgetItem(tarefa.titulo))
-            self._tabela_tarefas.setItem(linha, 1, QTableWidgetItem(tarefa.grupo))
-            self._tabela_tarefas.setItem(
-                linha,
-                2,
-                QTableWidgetItem(formatar_data_humana(tarefa.agendamento)),
-            )
 
     def _registrar_atividade(self, descricao: str) -> None:
         """Adiciona uma entrada à lista de logs/timeline."""

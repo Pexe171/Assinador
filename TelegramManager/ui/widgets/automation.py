@@ -1,323 +1,184 @@
-"""Widget de automação de grupos com agendamento e monitoramento."""
+"""Painel de grupos sincronizados para escolha rápida de destinos."""
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import List
 
-from PyQt6.QtCore import QDateTime, QTimer, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QApplication,
-    QCheckBox,
     QComboBox,
-    QDateTimeEdit,
-    QFormLayout,
-    QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QPushButton,
-    QSlider,
-    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
-from TelegramManager.core.automation import AutomationEngine, AutomationTask
-from TelegramManager.utils.helpers import formatar_data_humana, gerar_identificador
+from TelegramManager.core.extraction import ExtractionService, SyncedGroup
+from TelegramManager.core.session_manager import SessionManager
+from TelegramManager.notifications.dispatcher import NotificationDispatcher
+from TelegramManager.utils.helpers import formatar_data_humana
 
 
 class GroupAutomationWidget(QWidget):
-    """Centraliza o fluxo de automação de grupos com monitoramento em tempo real."""
+    """Lista os grupos disponíveis por conta após a sincronização."""
 
-    tasks_changed = pyqtSignal()
-
-    def __init__(self, automation_engine: AutomationEngine | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        session_manager: SessionManager,
+        extraction_service: ExtractionService,
+        notifications: NotificationDispatcher | None = None,
+    ) -> None:
         super().__init__()
-        self._engine = automation_engine
-        self._tasks: List[AutomationTask] = []
-        self._paused = False
+        self._session_manager = session_manager
+        self._extraction_service = extraction_service
+        self._notifications = notifications
+        self._grupos: List[SyncedGroup] = []
 
-        self._scheduler_timer = QTimer(self)
-        self._scheduler_timer.setInterval(1000)
-        self._scheduler_timer.timeout.connect(self._verificar_tarefas)
-        self._scheduler_timer.start()
+        self._combo_contas: QComboBox
+        self._filtro_nome: QLineEdit
+        self._tabela: QTableWidget
+        self._label_status: QLabel
 
         self._montar_interface()
-        if self._engine:
-            self._sincronizar_backend()
+        self.recarregar()
 
     def _montar_interface(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(18)
 
-        layout.addWidget(self._criar_cabecalho())
-        layout.addWidget(self._criar_painel_agendamento())
-        layout.addWidget(self._criar_tabela_tarefas())
-        layout.addWidget(self._criar_monitor())
-        layout.addStretch()
-
-    def _criar_cabecalho(self) -> QWidget:
-        cabecalho = QWidget()
-        cabecalho_layout = QHBoxLayout(cabecalho)
-        cabecalho_layout.setContentsMargins(0, 0, 0, 0)
-
-        titulo = QLabel("Automação de Grupos")
+        cabecalho = QHBoxLayout()
+        titulo = QLabel("Grupos sincronizados")
         titulo.setStyleSheet("font-size: 22px; font-weight: bold;")
+        cabecalho.addWidget(titulo)
+        cabecalho.addStretch()
+        botao_recarregar = QPushButton("Recarregar")
+        botao_recarregar.clicked.connect(self.recarregar)
+        cabecalho.addWidget(botao_recarregar)
+        layout.addLayout(cabecalho)
 
-        self._botao_pausar = QPushButton("Pausar operações")
-        self._botao_pausar.setCheckable(True)
-        self._botao_pausar.toggled.connect(self._alternar_pausa)
+        descricao = QLabel(
+            "Visualize todos os grupos importados do Telegram após a sincronização das contas."
+            " Escolha o destino ideal sem depender de agendamentos artificiais."
+        )
+        descricao.setWordWrap(True)
+        layout.addWidget(descricao)
 
-        cabecalho_layout.addWidget(titulo)
-        cabecalho_layout.addStretch()
-        cabecalho_layout.addWidget(self._botao_pausar)
+        filtros = QHBoxLayout()
+        filtros.addWidget(QLabel("Conta sincronizada:"))
+        self._combo_contas = QComboBox()
+        self._combo_contas.currentIndexChanged.connect(lambda *_: self._atualizar_tabela())
+        filtros.addWidget(self._combo_contas, stretch=1)
+        filtros.addWidget(QLabel("Filtro por nome:"))
+        self._filtro_nome = QLineEdit()
+        self._filtro_nome.setPlaceholderText("Digite para filtrar os grupos")
+        self._filtro_nome.textChanged.connect(self._filtrar)
+        filtros.addWidget(self._filtro_nome, stretch=1)
+        layout.addLayout(filtros)
 
-        return cabecalho
-
-    def _criar_painel_agendamento(self) -> QWidget:
-        painel = QGroupBox("Agendador de tarefas")
-        painel_layout = QHBoxLayout(painel)
-        painel_layout.setSpacing(16)
-
-        formulario = QFormLayout()
-        formulario.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-
-        self._input_titulo = QLineEdit()
-        self._input_titulo.setPlaceholderText("Ex: Monitorar novos membros")
-        formulario.addRow("Nome da tarefa", self._input_titulo)
-
-        self._input_grupo = QComboBox()
-        self._input_grupo.setEditable(True)
-        self._input_grupo.setPlaceholderText("Informe ou selecione o grupo")
-        formulario.addRow("Grupo alvo", self._input_grupo)
-
-        self._input_data = QDateTimeEdit()
-        self._input_data.setDisplayFormat("dd/MM/yyyy HH:mm")
-        self._input_data.setDateTime(QDateTime.currentDateTime().addSecs(600))
-        formulario.addRow("Execução", self._input_data)
-
-        self._input_delay_min = QSpinBox()
-        self._input_delay_min.setRange(0, 3600)
-        self._input_delay_min.setSuffix(" s")
-        self._input_delay_min.setValue(10)
-        self._input_delay_min.valueChanged.connect(self._ajustar_delay_minimo)
-        formulario.addRow("Delay mínimo", self._input_delay_min)
-
-        self._input_delay_max = QSpinBox()
-        self._input_delay_max.setRange(0, 3600)
-        self._input_delay_max.setSuffix(" s")
-        self._input_delay_max.setValue(30)
-        self._input_delay_max.valueChanged.connect(self._ajustar_delay_maximo)
-        formulario.addRow("Delay máximo", self._input_delay_max)
-
-        painel_layout.addLayout(formulario, stretch=2)
-
-        controles = QVBoxLayout()
-        controles.setSpacing(12)
-
-        self._slider_delay = QSlider(Qt.Orientation.Horizontal)
-        self._slider_delay.setRange(0, 120)
-        self._slider_delay.setValue(15)
-        self._slider_delay.valueChanged.connect(self._sincronizar_slider)
-
-        controles.addWidget(QLabel("Ajuste visual do intervalo"))
-        controles.addWidget(self._slider_delay)
-
-        self._botao_agendar = QPushButton("Agendar tarefa")
-        self._botao_agendar.clicked.connect(self._agendar_tarefa)
-        controles.addWidget(self._botao_agendar)
-        controles.addStretch()
-
-        painel_layout.addLayout(controles, stretch=1)
-        return painel
-
-    def _criar_tabela_tarefas(self) -> QWidget:
-        self._tabela = QTableWidget(0, 5)
+        self._tabela = QTableWidget(0, 4)
         self._tabela.setHorizontalHeaderLabels(
-            ["Tarefa", "Grupo", "Execução", "Status", "Delay"]
+            ["Grupo", "Conta", "Última sincronização", "Usuários no banco"]
         )
-        self._tabela.horizontalHeader().setStretchLastSection(True)
         self._tabela.verticalHeader().setVisible(False)
-        self._tabela.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._tabela.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        return self._tabela
+        self._tabela.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._tabela.setAlternatingRowColors(True)
+        header = self._tabela.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        layout.addWidget(self._tabela, stretch=1)
 
-    def _criar_monitor(self) -> QWidget:
-        monitor = QGroupBox("Monitor em tempo real")
-        layout = QVBoxLayout(monitor)
-        layout.setSpacing(12)
+        self._label_status = QLabel()
+        self._label_status.setStyleSheet("color: #64748b;")
+        layout.addWidget(self._label_status)
 
-        self._lista_eventos = QListWidget()
-        layout.addWidget(self._lista_eventos)
+    def recarregar(self) -> None:
+        """Força a atualização da lista de contas e dos grupos carregados."""
 
-        rodape = QHBoxLayout()
-        rodape.addWidget(QLabel("Alertas sonoros"))
-
-        self._check_alerta = QCheckBox("Notificar quando concluir")
-        self._check_alerta.setChecked(True)
-        rodape.addWidget(self._check_alerta)
-        rodape.addStretch()
-
-        botao_limpar = QPushButton("Limpar histórico")
-        botao_limpar.clicked.connect(self._lista_eventos.clear)
-        rodape.addWidget(botao_limpar)
-
-        layout.addLayout(rodape)
-        return monitor
-
-    def _sincronizar_slider(self, valor: int) -> None:
-        self._input_delay_max.setValue(self._input_delay_min.value() + valor)
-
-    def _ajustar_delay_minimo(self, valor: int) -> None:
-        if self._input_delay_max.value() < valor:
-            self._input_delay_max.setValue(valor)
-        self._slider_delay.setValue(self._input_delay_max.value() - valor)
-
-    def _ajustar_delay_maximo(self, valor: int) -> None:
-        if valor < self._input_delay_min.value():
-            self._input_delay_min.setValue(valor)
-        self._slider_delay.setValue(valor - self._input_delay_min.value())
-
-    def _agendar_tarefa(self) -> None:
-        titulo = self._input_titulo.text().strip()
-        grupo = self._input_grupo.currentText().strip()
-        if not titulo or not grupo:
-            self._registrar_evento("Preencha o nome da tarefa e o grupo alvo para agendar.")
-            return
-
-        agendamento = self._input_data.dateTime().toPyDateTime()
-        delay_min = min(self._input_delay_min.value(), self._input_delay_max.value())
-        delay_max = max(self._input_delay_min.value(), self._input_delay_max.value())
-
-        identificador = gerar_identificador("auto")
-        tarefa = AutomationTask(
-            identificador=identificador,
-            titulo=titulo,
-            grupo=grupo,
-            agendamento=agendamento,
-            delay_min=delay_min,
-            delay_max=delay_max,
-        )
-        tarefa.logs.append(
-            f"Tarefa cadastrada para {formatar_data_humana(agendamento)}"
-        )
-        if self._engine:
-            self._engine.agendar(tarefa)
-            self._tasks = self._engine.listar()
-        else:
-            self._tasks.append(tarefa)
-        self._input_titulo.clear()
-        self._registrar_evento(
-            f"Tarefa '{titulo}' agendada para o grupo {grupo} às "
-            f"{agendamento.strftime('%H:%M')}"
-        )
-        if grupo and grupo not in [self._input_grupo.itemText(i) for i in range(self._input_grupo.count())]:
-            self._input_grupo.addItem(grupo)
+        self._preencher_contas()
         self._atualizar_tabela()
-        self.tasks_changed.emit()
+
+    def _preencher_contas(self) -> None:
+        sessions = self._session_manager.sessions
+        self._combo_contas.blockSignals(True)
+        self._combo_contas.clear()
+        self._combo_contas.addItem("Todas as contas sincronizadas", None)
+        for session in sorted(sessions.values(), key=lambda item: item.display_name.lower()):
+            rotulo = f"{session.display_name} ({session.phone})"
+            self._combo_contas.addItem(rotulo, session.phone)
+        habilitar = bool(sessions)
+        self._combo_contas.setEnabled(habilitar)
+        self._combo_contas.blockSignals(False)
 
     def _atualizar_tabela(self) -> None:
-        self._tabela.setRowCount(len(self._tasks))
-        for linha, tarefa in enumerate(self._tasks):
-            self._tabela.setItem(linha, 0, QTableWidgetItem(tarefa.titulo))
-            self._tabela.setItem(linha, 1, QTableWidgetItem(tarefa.grupo))
-            self._tabela.setItem(
-                linha,
-                2,
-                QTableWidgetItem(formatar_data_humana(tarefa.agendamento)),
+        phone = self._combo_contas.currentData()
+        try:
+            self._grupos = self._extraction_service.list_synced_groups(
+                account_phone=phone
             )
-            self._tabela.setItem(linha, 3, QTableWidgetItem(tarefa.status))
-            self._tabela.setItem(
-                linha,
-                4,
-                QTableWidgetItem(f"{tarefa.delay_min}-{tarefa.delay_max}s"),
+        except Exception as exc:  # pragma: no cover - proteção extra
+            self._grupos = []
+            self._notificar(
+                "Erro",
+                f"Não foi possível carregar os grupos sincronizados: {exc}",
             )
+        self._filtrar()
 
-    def _verificar_tarefas(self) -> None:
-        if self._paused:
-            return
-
-        agora = datetime.now()
-        houve_alteracao = False
-        for tarefa in self._tasks:
-            if tarefa.status == "Agendado" and tarefa.agendamento <= agora:
-                tarefa.status = "Em andamento"
-                tarefa.logs.append("Execução iniciada")
-                if self._engine:
-                    self._engine.atualizar_status(
-                        tarefa.identificador,
-                        status=tarefa.status,
-                        mensagem="Execução iniciada pela interface",
-                    )
-                self._registrar_evento(
-                    f"Iniciando '{tarefa.titulo}' no grupo {tarefa.grupo}."
-                )
-                houve_alteracao = True
-            elif tarefa.status == "Em andamento":
-                tarefa.progresso += max(5, int((tarefa.delay_max or 1) / 2))
-                if tarefa.progresso >= 100:
-                    tarefa.status = "Concluído"
-                    tarefa.logs.append("Fluxo concluído com sucesso")
-                    if self._engine:
-                        self._engine.atualizar_status(
-                            tarefa.identificador,
-                            status=tarefa.status,
-                            progresso=100,
-                            mensagem="Tarefa concluída pelo monitor da interface",
-                        )
-                    self._registrar_evento(
-                        f"Tarefa '{tarefa.titulo}' concluída no grupo {tarefa.grupo}."
-                    )
-                    if self._check_alerta.isChecked():
-                        QApplication.beep()
-                    houve_alteracao = True
-                else:
-                    restante = max(0, 100 - tarefa.progresso)
-                    tarefa.logs.append(
-                        f"Progresso atualizado: {tarefa.progresso}% (restante {restante}%)"
-                    )
-                    if self._engine:
-                        self._engine.atualizar_status(
-                            tarefa.identificador,
-                            progresso=min(100, tarefa.progresso),
-                            mensagem="Progresso sincronizado a partir da interface",
-                        )
-        self._atualizar_tabela()
-        if houve_alteracao:
-            self.tasks_changed.emit()
-
-    def _registrar_evento(self, mensagem: str) -> None:
-        item = QListWidgetItem(datetime.now().strftime("%H:%M:%S") + " • " + mensagem)
-        self._lista_eventos.insertItem(0, item)
-
-    def _alternar_pausa(self, ativo: bool) -> None:
-        self._paused = ativo
-        if ativo:
-            self._botao_pausar.setText("Retomar operações")
-            self._registrar_evento("Fila de automação pausada.")
+    def _filtrar(self) -> None:
+        termo = self._filtro_nome.text().lower().strip()
+        if not termo:
+            filtrados = list(self._grupos)
         else:
-            self._botao_pausar.setText("Pausar operações")
-            self._registrar_evento("Fila retomada e monitorando novamente.")
+            filtrados = [
+                grupo
+                for grupo in self._grupos
+                if termo in grupo.name.lower()
+                or (grupo.account_display_name and termo in grupo.account_display_name.lower())
+            ]
+        self._popular_tabela(filtrados)
+        self._atualizar_status(len(filtrados))
 
-    def _sincronizar_backend(self) -> None:
-        """Carrega as tarefas registradas no backend e atualiza o painel."""
+    def _popular_tabela(self, grupos: List[SyncedGroup]) -> None:
+        self._tabela.setRowCount(len(grupos))
+        for linha, grupo in enumerate(grupos):
+            conta = "—"
+            if grupo.account_display_name:
+                conta = grupo.account_display_name
+                if grupo.account_phone:
+                    conta = f"{conta} ({grupo.account_phone})"
+            elif grupo.account_phone:
+                conta = grupo.account_phone
 
-        self._tasks = self._engine.listar() if self._engine else []
-        for tarefa in self._tasks:
-            self._registrar_evento(
-                f"Tarefa '{tarefa.titulo}' sincronizada para {formatar_data_humana(tarefa.agendamento)}"
+            ultima = (
+                formatar_data_humana(grupo.last_sync) if grupo.last_sync else "—"
             )
-        self._atualizar_tabela()
+            membros = f"{grupo.total_members:,}".replace(",", ".")
 
-    def obter_tarefas(self) -> List[AutomationTask]:
-        """Retorna uma cópia das tarefas agendadas para uso externo."""
+            self._tabela.setItem(linha, 0, QTableWidgetItem(grupo.name))
+            self._tabela.setItem(linha, 1, QTableWidgetItem(conta))
+            self._tabela.setItem(linha, 2, QTableWidgetItem(ultima))
+            self._tabela.setItem(linha, 3, QTableWidgetItem(membros))
 
-        if self._engine:
-            return self._engine.listar()
-        return list(self._tasks)
+    def _atualizar_status(self, quantidade_filtrada: int) -> None:
+        total = len(self._grupos)
+        conta = self._combo_contas.currentText()
+        if not total:
+            mensagem = "Nenhum grupo sincronizado encontrado." if total == 0 else ""
+        else:
+            mensagem = (
+                f"Mostrando {quantidade_filtrada} de {total} grupos sincronizados"
+                f" • {conta}"
+            )
+        self._label_status.setText(mensagem)
+
+    def _notificar(self, titulo: str, mensagem: str) -> None:
+        if self._notifications:
+            self._notifications.notify(titulo, mensagem)
