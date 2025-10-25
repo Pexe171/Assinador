@@ -71,7 +71,7 @@ class QrLoginDialog(QDialog):
 
         self._service = container.authentication_service
         self._cancel_event = Event()
-        self._thread = QThread(self)
+        self._thread: QThread | None = QThread(self)
         self._worker = _QrLoginWorker(self._service, self._cancel_event)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
@@ -83,6 +83,7 @@ class QrLoginDialog(QDialog):
         self._worker.error_occurred.connect(self._encerrar_thread)
         self._worker.completed.connect(self._encerrar_thread)
         self._thread.finished.connect(self._thread.deleteLater)
+        self._thread.finished.connect(self._on_thread_finished)
 
         self._montar_interface()
         self._thread.start()
@@ -126,8 +127,15 @@ class QrLoginDialog(QDialog):
         layout.addLayout(botoes)
 
     def _encerrar_thread(self) -> None:
+        if self._thread is None:
+            return
+
         if self._thread.isRunning():
             self._thread.quit()
+            self._thread.wait(2000)
+
+    def _on_thread_finished(self) -> None:
+        self._thread = None
 
     def reject(self) -> None:  # type: ignore[override]
         self._cancel_event.set()
