@@ -25,6 +25,8 @@ class NotificationDispatcher:
         self._config = config
 
     def notify(self, titulo: str, mensagem: str) -> None:
+        titulo = self._limitar_texto(titulo)
+        mensagem = self._limitar_texto(mensagem)
         dados = NotificationMessage(titulo=titulo, mensagem=mensagem)
         if notification is None:
             print(f"[NOTIFICAÇÃO] {dados.titulo}: {dados.mensagem}")
@@ -35,3 +37,11 @@ class NotificationDispatcher:
             message=dados.mensagem,
             app_name=self._config.app_name,
         )
+
+    @staticmethod
+    def _limitar_texto(texto: str, limite: int = 250) -> str:
+        """Evita exceder o limite de caracteres das notificações nativas."""
+
+        if len(texto) <= limite:
+            return texto
+        return f"{texto[: limite - 1]}…"
