@@ -16,6 +16,7 @@ dependencies = [
     "pydantic>=2.5",
     "plyer>=2.1",
     "requests>=2.31",
+    "qrcode[pil]>=7.4",
 ]
 
 [tool.setuptools.packages.find]
