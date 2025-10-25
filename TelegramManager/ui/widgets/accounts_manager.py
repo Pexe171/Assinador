@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import logging # Adicionado para logging
 from dataclasses import dataclass, field
-from typing import Callable, Dict
+from datetime import datetime
+from pathlib import Path
+from typing import Dict
 
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap # QColor adicionado
@@ -18,10 +20,12 @@ from PyQt6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
     QPushButton,
     QPlainTextEdit,
     QSizePolicy, # Adicionado QSizePolicy
     QSplitter,
+    QFileDialog,
     QVBoxLayout,
     QWidget,
 )
@@ -337,6 +341,23 @@ class AccountsManagerWidget(QWidget):
         self._botao_teste.clicked.connect(self._testar_conexao)
         self._botao_teste.setEnabled(False)
         form_info.addRow("Rede:", self._botao_teste)
+
+        acoes_widget = QWidget()
+        acoes_layout = QHBoxLayout(acoes_widget)
+        acoes_layout.setContentsMargins(0, 0, 0, 0)
+        acoes_layout.setSpacing(8)
+
+        self._botao_exportar = QPushButton("Baixar Dados")
+        self._botao_exportar.clicked.connect(self._exportar_dados_conta)
+        self._botao_exportar.setEnabled(False)
+        acoes_layout.addWidget(self._botao_exportar)
+
+        self._botao_salvar_logs = QPushButton("Salvar Logs")
+        self._botao_salvar_logs.clicked.connect(self._baixar_logs)
+        self._botao_salvar_logs.setEnabled(False)
+        acoes_layout.addWidget(self._botao_salvar_logs)
+
+        form_info.addRow("Downloads:", acoes_widget)
         painel_layout.addWidget(grupo_info)
 
         # Grupo de Logs
@@ -489,6 +510,8 @@ class AccountsManagerWidget(QWidget):
             self._label_status.setText("-")
             self._logs.clear()
             self._botao_teste.setEnabled(False)
+            self._botao_exportar.setEnabled(False)
+            self._botao_salvar_logs.setEnabled(False)
             return
 
         self._titulo_detalhe.setText(conta.info.display_name)
@@ -505,6 +528,8 @@ class AccountsManagerWidget(QWidget):
         # Exibe logs mais recentes primeiro
         self._logs.setPlainText("\n".join(reversed(conta.logs)))
         self._botao_teste.setEnabled(True)
+        self._botao_exportar.setEnabled(True)
+        self._botao_salvar_logs.setEnabled(bool(conta.logs))
 
     def _testar_conexao(self) -> None:
         """Simula um teste de conexão e adiciona ao log."""
@@ -540,4 +565,72 @@ class AccountsManagerWidget(QWidget):
     def _registrar_toast(self, mensagem: str) -> None:
         """Envia uma notificação."""
         self._notifications.notify(titulo="Status da Conta", mensagem=mensagem)
+
+    def _exportar_dados_conta(self) -> None:
+        """Permite baixar um pacote com informações básicas da conta."""
+
+        conta = self._obter_conta_selecionada()
+        if not conta:
+            return
+
+        sugestao = f"conta_{conta.info.phone}_{datetime.now():%Y%m%d_%H%M%S}.zip"
+        caminho, _ = QFileDialog.getSaveFileName(
+            self,
+            "Salvar dados da conta",
+            str(Path.home() / sugestao),
+            "Pacote ZIP (*.zip)",
+        )
+        if not caminho:
+            return
+
+        try:
+            destino = self._container.session_manager.export_session_bundle(
+                conta.info.phone, Path(caminho)
+            )
+        except ValueError as exc:
+            QMessageBox.critical(self, "Exportação inválida", str(exc))
+            return
+        except OSError as exc:
+            QMessageBox.critical(self, "Falha ao salvar", str(exc))
+            return
+
+        self._notifications.notify(
+            "Download concluído",
+            f"Pacote da conta {conta.info.display_name} salvo em {destino}",
+        )
+
+    def _baixar_logs(self) -> None:
+        """Salva o histórico de logs da conta em um arquivo texto."""
+
+        conta = self._obter_conta_selecionada()
+        if not conta:
+            return
+        if not conta.logs:
+            QMessageBox.information(
+                self,
+                "Sem registros",
+                "Esta conta ainda não possui logs para salvar.",
+            )
+            return
+
+        sugestao = f"logs_{conta.info.phone}_{datetime.now():%Y%m%d_%H%M%S}.txt"
+        caminho, _ = QFileDialog.getSaveFileName(
+            self,
+            "Salvar logs da sessão",
+            str(Path.home() / sugestao),
+            "Arquivo de texto (*.txt)",
+        )
+        if not caminho:
+            return
+
+        try:
+            Path(caminho).write_text("\n".join(conta.logs), encoding="utf-8")
+        except OSError as exc:
+            QMessageBox.critical(self, "Falha ao salvar", str(exc))
+            return
+
+        self._notifications.notify(
+            "Logs salvos",
+            f"Histórico da conta {conta.info.display_name} exportado com sucesso.",
+        )
 

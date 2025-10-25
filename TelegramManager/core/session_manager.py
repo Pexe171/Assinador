@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import tempfile
+import zipfile
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterator, Optional
 
@@ -98,3 +102,34 @@ class SessionManager:
 
     def get_session(self, phone: str) -> Optional[SessionInfo]:
         return self._sessions.get(phone)
+
+    def export_session_bundle(self, phone: str, destino: Path) -> Path:
+        """Gera um pacote zip com os dados básicos da sessão selecionada."""
+
+        info = self.get_session(phone)
+        if info is None:
+            raise ValueError("Sessão não encontrada para exportação.")
+
+        destino = destino.with_suffix(".zip") if destino.suffix != ".zip" else destino
+        destino.parent.mkdir(parents=True, exist_ok=True)
+
+        metadados = {
+            "phone": info.phone,
+            "display_name": info.display_name,
+            "status": info.status,
+            "exported_at": datetime.utcnow().isoformat(),
+        }
+
+        session_file = Path(self._config.paths.sessions_dir) / f"{phone}.session"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            json_path = tmp_path / "metadata.json"
+            json_path.write_text(json.dumps(metadados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            with zipfile.ZipFile(destino, "w", compression=zipfile.ZIP_DEFLATED) as pacote:
+                pacote.write(json_path, arcname="metadata.json")
+                if session_file.exists():
+                    pacote.write(session_file, arcname=session_file.name)
+
+        return destino
