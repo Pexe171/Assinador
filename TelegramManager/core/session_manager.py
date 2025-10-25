@@ -25,6 +25,7 @@ class SessionInfo:
     phone: str
     display_name: str
     status: str
+    session_string: str | None = None
 
 
 class SessionManager:
@@ -61,11 +62,19 @@ class SessionManager:
                 phone=conta.phone,
                 display_name=conta.display_name,
                 status=conta.status or "offline",
+                session_string=conta.session_string,
             )
         logger.info("%s contas carregadas do banco local", len(self._sessions))
 
-    def register_session(self, phone: str, display_name: str) -> SessionInfo:
-        info = SessionInfo(phone=phone, display_name=display_name, status="online")
+    def register_session(
+        self, phone: str, display_name: str, session_string: str | None = None
+    ) -> SessionInfo:
+        info = SessionInfo(
+            phone=phone,
+            display_name=display_name,
+            status="online",
+            session_string=session_string,
+        )
         self._sessions[phone] = info
 
         with self._db_session() as sessao:
@@ -75,11 +84,14 @@ class SessionManager:
                     phone=phone,
                     display_name=display_name,
                     status="online",
+                    session_string=session_string,
                 )
                 sessao.add(conta)
             else:
                 conta.display_name = display_name
                 conta.status = "online"
+                if session_string:
+                    conta.session_string = session_string
             sessao.commit()
 
         logger.info("Sessão %s registrada", phone)
