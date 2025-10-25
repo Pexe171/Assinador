@@ -13,7 +13,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Callable, Dict, List
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from TelegramManager.core.automation import AutomationEngine, TaskStatus
 from TelegramManager.core.database import Database
@@ -66,6 +66,16 @@ class AdditionJobMonitor:
     next_add_in_seconds: int = 0
 
 
+@dataclass(frozen=True)
+class AdditionOverview:
+    """Resumo agregado das operações de adição executadas."""
+
+    total_jobs: int
+    total_success: int
+    total_fail: int
+    success_rate: float
+
+
 class AdditionManager:
     """Gerencia o ciclo de vida das operações de adição de usuários."""
 
@@ -89,6 +99,33 @@ class AdditionManager:
         with self._db.session() as session:
             stmt = select(AdditionJob).order_by(AdditionJob.created_at.desc()).limit(limit)
             return list(session.scalars(stmt).all())
+
+    def overview(self) -> AdditionOverview:
+        """Calcula estatísticas consolidadas das adições já registradas."""
+
+        with self._db.session() as session:
+            total_jobs, total_success, total_fail = session.execute(
+                select(
+                    func.count(AdditionJob.id),
+                    func.sum(AdditionJob.success_count),
+                    func.sum(AdditionJob.fail_count),
+                )
+            ).one()
+
+        total_jobs = int(total_jobs or 0)
+        total_success = int(total_success or 0)
+        total_fail = int(total_fail or 0)
+        total_operacoes = total_success + total_fail
+        taxa_sucesso = (
+            (total_success / total_operacoes) * 100 if total_operacoes else 0.0
+        )
+
+        return AdditionOverview(
+            total_jobs=total_jobs,
+            total_success=total_success,
+            total_fail=total_fail,
+            success_rate=round(taxa_sucesso, 2),
+        )
 
     def create_job(self, config: AdditionJobConfig) -> AdditionJob:
         """Cria e persiste um novo Job de Adição, pronto para ser executado."""

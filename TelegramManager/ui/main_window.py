@@ -25,7 +25,6 @@ from TelegramManager.ui.widgets import (
     DashboardWidget,
     GroupAutomationWidget,
     GroupManagerWidget,
-    ReportsWidget,
     SettingsWidget,
     UserBankWidget,
 )
@@ -151,8 +150,10 @@ class MainWindow(QMainWindow):
         """Cria as instâncias dos widgets de cada seção."""
         logger.debug("Inicializando widgets das views...")
         self._dashboard = DashboardWidget(container=self._container)
-        self._automation = GroupAutomationWidget(
-            automation_engine=self._container.automation_engine
+        self._group_directory = GroupAutomationWidget(
+            session_manager=self._container.session_manager,
+            extraction_service=self._container.extraction_service,
+            notifications=self._notifications,
         )
         self._accounts = AccountsManagerWidget(
             container=self._container,
@@ -169,7 +170,6 @@ class MainWindow(QMainWindow):
             container=self._container,
             notifications=self._notifications,
         )
-        self._reports = ReportsWidget(report_service=self._container.report_service)
         self._settings = SettingsWidget()
 
         # Mapeamento Título -> Chave -> Instância do Widget
@@ -180,8 +180,7 @@ class MainWindow(QMainWindow):
             ("🔍 Gerenciar Grupos (Extração)", "groups", self._groups),
             ("뱅 Banco de Usuários", "user_bank", self._user_bank), # Emoji Banco
             ("➕ Adicionar Usuários", "addition", self._addition),
-            ("⚙️ Automação (Agendador)", "automation", self._automation), # Emoji engrenagem
-            ("📈 Relatórios", "reports", self._reports),
+            ("📂 Grupos Sincronizados", "group_directory", self._group_directory),
             ("🔧 Configurações", "settings", self._settings), # Emoji chave inglesa
         ]
 
@@ -206,20 +205,21 @@ class MainWindow(QMainWindow):
             self._accounts.account_changed.connect(self._dashboard.atualizar_metricas)
             logger.debug("Conectado: _accounts.account_changed -> _dashboard.atualizar_metricas")
 
-        if hasattr(self, '_groups') and hasattr(self, '_user_bank') and hasattr(self, '_dashboard') and hasattr(self, '_reports'):
+        if hasattr(self, '_groups') and hasattr(self, '_user_bank') and hasattr(self, '_dashboard') and hasattr(self, '_group_directory'):
             self._groups.extraction_finished.connect(self._user_bank.recarregar)
             self._groups.extraction_finished.connect(self._dashboard.atualizar_metricas)
-            self._groups.extraction_finished.connect(self._reports.atualizar_relatorios)
-            logger.debug("Conectado: _groups.extraction_finished -> _user_bank.recarregar, _dashboard.atualizar_metricas, _reports.atualizar_relatorios")
+            self._groups.extraction_finished.connect(self._group_directory.recarregar)
+            logger.debug(
+                "Conectado: _groups.extraction_finished -> _user_bank.recarregar, _dashboard.atualizar_metricas, _group_directory.recarregar"
+            )
 
-        if hasattr(self, '_automation') and hasattr(self, '_dashboard'):
-            self._automation.tasks_changed.connect(self._dashboard.atualizar_agendamentos)
-            logger.debug("Conectado: _automation.tasks_changed -> _dashboard.atualizar_agendamentos")
-
-        if hasattr(self, '_addition') and hasattr(self, '_dashboard') and hasattr(self, '_reports'):
+        if hasattr(self, '_addition') and hasattr(self, '_dashboard'):
             self._addition.job_changed.connect(self._dashboard.atualizar_metricas_adicao)
-            self._addition.job_changed.connect(self._reports.atualizar_relatorios)
-            logger.debug("Conectado: _addition.job_changed -> _dashboard.atualizar_metricas_adicao, _reports.atualizar_relatorios")
+            if hasattr(self, '_group_directory'):
+                self._addition.job_changed.connect(self._group_directory.recarregar)
+            logger.debug(
+                "Conectado: _addition.job_changed -> _dashboard.atualizar_metricas_adicao"
+            )
 
     def _carregar_dados_iniciais(self) -> None:
         """Força a primeira atualização dos dados no Dashboard."""
@@ -228,11 +228,8 @@ class MainWindow(QMainWindow):
             try:
                 self._dashboard.atualizar_metricas()
                 self._dashboard.atualizar_metricas_adicao()
-                # Garante que automation_engine existe antes de chamar listar()
-                if hasattr(self._container, 'automation_engine'):
-                    self._dashboard.atualizar_agendamentos(self._container.automation_engine.listar())
-                else:
-                    logger.warning("AutomationEngine não encontrado no container.")
+                if hasattr(self, '_group_directory'):
+                    self._group_directory.recarregar()
             except Exception as e:
                 logger.exception("Erro durante o carregamento inicial de dados do Dashboard")
                 self.statusBar().showMessage(f"Erro ao carregar dados: {e}")
@@ -257,8 +254,8 @@ class MainWindow(QMainWindow):
                  self._carregar_dados_iniciais() # Força recarga completa do dashboard
             elif chave == "user_bank" and hasattr(self, '_user_bank'):
                 self._user_bank.recarregar()
-            elif chave == "reports" and hasattr(self, '_reports'):
-                self._reports.atualizar_relatorios()
+            elif chave == "group_directory" and hasattr(self, '_group_directory'):
+                self._group_directory.recarregar()
             elif chave == "addition" and hasattr(self, '_addition'):
                 # Recarrega contas e usuários na tela de adição
                 self._addition._carregar_dados_iniciais()
