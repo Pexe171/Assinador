@@ -9,7 +9,13 @@ from threading import Event
 from typing import Callable
 
 from telethon import TelegramClient
-from telethon.errors import SessionPasswordNeededError
+from telethon.errors import (
+    FloodWaitError,
+    PhoneCodeExpiredError,
+    PhoneCodeInvalidError,
+    PhoneNumberInvalidError,
+    SessionPasswordNeededError,
+)
 from telethon.sessions import StringSession
 
 from TelegramManager.core.session_manager import SessionInfo, SessionManager
@@ -27,17 +33,13 @@ class AuthenticationCancelledError(AuthenticationError):
 
 
 @dataclass
-class _Callbacks:
-    on_code: Callable[[str], None]
+class _StateCallbacks:
+    """Coordena mensagens de status e cancelamento opcional."""
+
     on_state: Callable[[str], None] | None
     cancel_event: Event | None
 
-    def emit_code(self, url: str) -> None:
-        if self.cancelled:
-            return
-        self.on_code(url)
-
-    def emit_state(self, mensagem: str) -> None:
+    def emit(self, mensagem: str) -> None:
         if self.cancelled:
             return
         if self.on_state:
@@ -55,27 +57,60 @@ class AuthenticationService:
         self._config = config
         self._session_manager = session_manager
 
-    def authenticate_with_qr(
+    def request_login_code(
         self,
-        on_code: Callable[[str], None],
         *,
+        phone: str,
         on_state: Callable[[str], None] | None = None,
         cancel_event: Event | None = None,
-    ) -> SessionInfo:
-        """Executa o fluxo de autenticação via QR Code de forma bloqueante."""
+    ) -> str:
+        """Envia o código de autenticação via Telegram e retorna o *hash* associado."""
 
         if not self._config.telethon_api_id or not self._config.telethon_api_hash:
             raise AuthenticationError("Credenciais da API do Telegram não configuradas.")
 
-        callbacks = _Callbacks(on_code=on_code, on_state=on_state, cancel_event=cancel_event)
+        callbacks = _StateCallbacks(on_state=on_state, cancel_event=cancel_event)
 
-        def _run() -> SessionInfo:
-            logger.info("Iniciando fluxo de autenticação via QR Code.")
-            return asyncio.run(self._authenticate_with_qr(callbacks))
+        def _run() -> str:
+            logger.info("Solicitando código de login para %s.", phone)
+            return asyncio.run(self._request_login_code(phone=phone, callbacks=callbacks))
 
         return _run()
 
-    async def _authenticate_with_qr(self, callbacks: _Callbacks) -> SessionInfo:
+    def authenticate_with_code(
+        self,
+        *,
+        phone: str,
+        code: str,
+        phone_code_hash: str,
+        display_name: str | None = None,
+        password: str | None = None,
+        on_state: Callable[[str], None] | None = None,
+        cancel_event: Event | None = None,
+    ) -> SessionInfo:
+        """Conclui a autenticação utilizando o código recebido pelo usuário."""
+
+        if not self._config.telethon_api_id or not self._config.telethon_api_hash:
+            raise AuthenticationError("Credenciais da API do Telegram não configuradas.")
+
+        callbacks = _StateCallbacks(on_state=on_state, cancel_event=cancel_event)
+
+        def _run() -> SessionInfo:
+            logger.info("Finalizando autenticação por código para %s.", phone)
+            return asyncio.run(
+                self._authenticate_with_code(
+                    phone=phone,
+                    code=code,
+                    phone_code_hash=phone_code_hash,
+                    display_name=display_name,
+                    password=password,
+                    callbacks=callbacks,
+                )
+            )
+
+        return _run()
+
+    async def _request_login_code(self, *, phone: str, callbacks: _StateCallbacks) -> str:
         client = TelegramClient(
             StringSession(),
             api_id=int(self._config.telethon_api_id),
@@ -83,54 +118,97 @@ class AuthenticationService:
         )
 
         await client.connect()
-        logger.info("Cliente Telethon conectado para autenticação via QR.")
-        callbacks.emit_state("Conectado. Gerando QR Code...")
+        logger.info("Cliente Telethon conectado para solicitar código.")
+        callbacks.emit("Conectado. Solicitando envio do código...")
 
         try:
-            qr_login = await client.qr_login()
-            callbacks.emit_code(qr_login.url)
-            callbacks.emit_state("Escaneie o QR Code usando o Telegram no celular.")
+            if callbacks.cancelled:
+                raise AuthenticationCancelledError("Fluxo cancelado pelo usuário.")
 
-            while True:
-                if callbacks.cancelled:
-                    raise AuthenticationCancelledError("Fluxo cancelado pelo usuário.")
-                try:
-                    await asyncio.wait_for(qr_login.wait(), timeout=25)
-                    break
-                except asyncio.TimeoutError:
-                    callbacks.emit_state("QR Code expirou, gerando um novo...")
-                    logger.debug("QR Code expirou, solicitando um novo token.")
-                    qr_login = await qr_login.recreate()
-                    callbacks.emit_code(qr_login.url)
-                except SessionPasswordNeededError as exc:
+            resultado = await client.send_code_request(phone)
+            callbacks.emit("Código enviado. Verifique o Telegram associado ao número informado.")
+            return resultado.phone_code_hash
+        except FloodWaitError as exc:
+            segundos = getattr(exc, "seconds", None)
+            detalhe = f" Aguarde {segundos} segundos." if segundos else ""
+            raise AuthenticationError(
+                "Muitas tentativas em sequência. Tente novamente mais tarde." + detalhe
+            ) from exc
+        except PhoneNumberInvalidError as exc:
+            raise AuthenticationError("O número informado não é válido no Telegram.") from exc
+        finally:
+            callbacks.emit("Finalizando conexão...")
+            await client.disconnect()
+            callbacks.emit("Conexão encerrada.")
+            logger.info("Cliente Telethon desconectado do envio de código.")
+
+    async def _authenticate_with_code(
+        self,
+        *,
+        phone: str,
+        code: str,
+        phone_code_hash: str,
+        display_name: str | None,
+        password: str | None,
+        callbacks: _StateCallbacks,
+    ) -> SessionInfo:
+        client = TelegramClient(
+            StringSession(),
+            api_id=int(self._config.telethon_api_id),
+            api_hash=self._config.telethon_api_hash,
+        )
+
+        await client.connect()
+        logger.info("Cliente Telethon conectado para finalizar autenticação.")
+        callbacks.emit("Conectado. Validando o código informado...")
+
+        try:
+            if callbacks.cancelled:
+                raise AuthenticationCancelledError("Fluxo cancelado pelo usuário.")
+
+            try:
+                await client.sign_in(
+                    phone=phone,
+                    code=code,
+                    phone_code_hash=phone_code_hash,
+                )
+            except PhoneCodeInvalidError as exc:
+                raise AuthenticationError("O código informado é inválido.") from exc
+            except PhoneCodeExpiredError as exc:
+                raise AuthenticationError("O código informado expirou. Solicite um novo.") from exc
+            except SessionPasswordNeededError:
+                if not password:
                     raise AuthenticationError(
-                        "A conta possui senha em duas etapas. Use o login tradicional."
-                    ) from exc
+                        "A conta possui senha em duas etapas. Informe a senha para concluir."
+                    )
+                callbacks.emit("Conta com 2FA. Validando senha adicional...")
+                await client.sign_in(password=password)
 
-            callbacks.emit_state("Autenticando conta...")
             me = await client.get_me()
             if me is None:
-                raise AuthenticationError("Não foi possível obter os dados da conta.")
+                raise AuthenticationError("Não foi possível obter os dados da conta autenticada.")
 
             session_string = client.session.save()
-            display_name_parts = [me.first_name or "", me.last_name or ""]
-            display_name = " ".join(parte for parte in display_name_parts if parte).strip()
-            if not display_name:
-                display_name = me.username or str(me.id)
+            if display_name:
+                nome_exibicao = display_name
+            else:
+                partes_nome = [me.first_name or "", me.last_name or ""]
+                nome_exibicao = " ".join(parte for parte in partes_nome if parte).strip()
+                if not nome_exibicao:
+                    nome_exibicao = me.username or str(me.id)
 
-            phone = me.phone or str(me.id)
+            phone_number = me.phone or phone
 
             info = self._session_manager.register_session(
-                phone=phone,
-                display_name=display_name,
+                phone=phone_number,
+                display_name=nome_exibicao,
                 session_string=session_string,
             )
-            logger.info("Conta %s autenticada via QR Code.", phone)
-            callbacks.emit_state("Conta autenticada com sucesso.")
+            callbacks.emit("Conta autenticada com sucesso.")
+            logger.info("Conta %s autenticada via código.", phone_number)
             return info
-
         finally:
-            callbacks.emit_state("Finalizando conexão...")
+            callbacks.emit("Finalizando conexão...")
             await client.disconnect()
-            logger.info("Cliente Telethon desconectado do fluxo de autenticação.")
-            callbacks.emit_state("Conexão encerrada.")
+            callbacks.emit("Conexão encerrada.")
+            logger.info("Cliente Telethon desconectado após autenticação.")

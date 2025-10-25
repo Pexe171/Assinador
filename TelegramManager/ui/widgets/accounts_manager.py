@@ -201,7 +201,7 @@ class AccountsManagerWidget(QWidget):
             SessionFormWidget QPushButton:hover {
                 background-color: #e2e8f0;
             }
-            SessionFormWidget QLabel#qrHelperLabel {
+            SessionFormWidget QLabel#statusLabel {
                 margin-top: 16px;
                 font-size: 12px;
                 color: #94a3b8;
