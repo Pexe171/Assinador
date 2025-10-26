@@ -34,7 +34,11 @@ DatabaseManager::DatabaseManager()
         m_banco = QSqlDatabase::addDatabase(kDriver, "assinador");
     }
 
-    m_banco.setDatabaseName(m_caminhoBanco);
+    if (m_banco.databaseName().isEmpty()) {
+        m_banco.setDatabaseName(m_caminhoBanco);
+    } else {
+        m_caminhoBanco = m_banco.databaseName();
+    }
 }
 
 bool DatabaseManager::abrirConexao()

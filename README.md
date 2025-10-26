@@ -20,3 +20,13 @@ boas práticas de programação e blueprint.
 
 Sinta-se à vontade para iniciar a próxima fase. Este repositório está limpo e preparado
 para receber a sua visão.
+
+## Como rodar os testes
+
+Após configurar o ambiente com CMake, execute os testes automatizados diretamente da pasta de build:
+
+```
+ctest --output-on-failure
+```
+
+O parâmetro `--output-on-failure` garante mensagens detalhadas sempre que um caso falhar, facilitando a investigação.
