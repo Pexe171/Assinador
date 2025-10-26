@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Threading;
 using UniversalMailer.Client.Wpf.ViewModels;
 using UniversalMailer.Core.Mail.Models;
 using UniversalMailer.Engine.Services;
@@ -14,10 +16,26 @@ namespace UniversalMailer.Client.Wpf;
 
 public partial class App : Application
 {
+    private static readonly string ErrorLogPath = Path.Combine(AppContext.BaseDirectory, "client-wpf-errors.log");
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+
+        try
+        {
+            InitializeShell();
+        }
+        catch (Exception ex)
+        {
+            HandleFatalStartupException("Não foi possível iniciar a aplicação.", ex);
+        }
+    }
+
+    private void InitializeShell()
+    {
         var baseDirectory = AppContext.BaseDirectory;
         var manifestPath = Path.Combine(baseDirectory, "templates.json");
         var templateDirectory = baseDirectory;
@@ -38,6 +56,71 @@ public partial class App : Application
         };
 
         window.Show();
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        var logPath = LogException("Exceção não tratada no Dispatcher", e.Exception);
+
+        var message = new StringBuilder();
+        message.AppendLine("Ocorreu um erro inesperado e o aplicativo será encerrado.");
+        message.AppendLine();
+        message.AppendLine(e.Exception.Message);
+
+        if (!string.IsNullOrWhiteSpace(logPath))
+        {
+            message.AppendLine();
+            message.AppendLine("Detalhes adicionais foram gravados em:");
+            message.AppendLine(logPath);
+        }
+
+        MessageBox.Show(message.ToString(), "Erro inesperado", MessageBoxButton.OK, MessageBoxImage.Error);
+        e.Handled = true;
+        Shutdown(-1);
+    }
+
+    private void HandleFatalStartupException(string context, Exception exception)
+    {
+        var logPath = LogException(context, exception);
+
+        var message = new StringBuilder();
+        message.AppendLine(context);
+        message.AppendLine();
+        message.AppendLine(exception.Message);
+
+        if (!string.IsNullOrWhiteSpace(logPath))
+        {
+            message.AppendLine();
+            message.AppendLine("Detalhes adicionais foram gravados em:");
+            message.AppendLine(logPath);
+        }
+
+        MessageBox.Show(message.ToString(), "Erro ao iniciar", MessageBoxButton.OK, MessageBoxImage.Error);
+        Shutdown(-1);
+    }
+
+    private static string LogException(string context, Exception exception)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(ErrorLogPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var builder = new StringBuilder();
+            builder.AppendLine($"[{DateTimeOffset.Now:O}] {context}");
+            builder.AppendLine(exception.ToString());
+            builder.AppendLine(new string('-', 80));
+
+            File.AppendAllText(ErrorLogPath, builder.ToString());
+            return ErrorLogPath;
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     private static IReadOnlyCollection<DispatchAccountOption> LoadAccounts(string configPath, string baseDirectory)
