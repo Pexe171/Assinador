@@ -1,13 +1,19 @@
 set(SOURCES
     main.cpp
     ui/main_window.cpp
+    ui/cadastro_form.cpp
+    ui/consulta_widget.cpp
     data/database_manager.cpp
+    data/cadastro_repository.cpp
     integration/outlook_automation.cpp
 )
 
 set(HEADERS
     ui/main_window.h
+    ui/cadastro_form.h
+    ui/consulta_widget.h
     data/database_manager.h
+    data/cadastro_repository.h
     integration/outlook_automation.h
 )
 

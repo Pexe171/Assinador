@@ -14,6 +14,7 @@ public:
     bool abrirConexao();
     void fecharConexao();
     [[nodiscard]] QString caminhoBanco() const;
+    [[nodiscard]] QSqlDatabase conexao() const;
 
 private:
     DatabaseManager();

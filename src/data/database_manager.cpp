@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStringList>
 #include <QTextStream>
 
 namespace assinador::data {
@@ -67,21 +68,52 @@ QString DatabaseManager::caminhoBanco() const
     return m_caminhoBanco;
 }
 
+QSqlDatabase DatabaseManager::conexao() const
+{
+    return m_banco;
+}
+
 bool DatabaseManager::aplicarMigracoesIniciais()
 {
     QSqlQuery query(m_banco);
-    const auto ddl = QStringLiteral(
-        "CREATE TABLE IF NOT EXISTS cadastros ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "nome TEXT NOT NULL,"
-        "email TEXT,"
-        "criado_em DATETIME DEFAULT CURRENT_TIMESTAMP"
-        ");"
-    );
 
-    if (!query.exec(ddl)) {
-        QTextStream(stderr) << "Erro ao aplicar migração inicial: " << query.lastError().text() << '\n';
-        return false;
+    const QStringList comandos {
+        QStringLiteral(
+            "CREATE TABLE IF NOT EXISTS cadastros ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "codigo TEXT NOT NULL UNIQUE,"
+            "nome TEXT NOT NULL,"
+            "email TEXT,"
+            "renda REAL DEFAULT 0,"
+            "status TEXT DEFAULT 'Pendente',"
+            "observacoes TEXT,"
+            "criado_em DATETIME DEFAULT CURRENT_TIMESTAMP"
+            ");"
+        ),
+        QStringLiteral(
+            "CREATE TABLE IF NOT EXISTS envios_log ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "cadastro_codigo TEXT NOT NULL,"
+            "modelo TEXT NOT NULL,"
+            "status_envio TEXT NOT NULL,"
+            "mensagem TEXT,"
+            "criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,"
+            "FOREIGN KEY(cadastro_codigo) REFERENCES cadastros(codigo) ON DELETE CASCADE"
+            ");"
+        ),
+        QStringLiteral(
+            "CREATE INDEX IF NOT EXISTS idx_cadastros_codigo ON cadastros(codigo);"
+        ),
+        QStringLiteral(
+            "CREATE INDEX IF NOT EXISTS idx_envios_log_cadastro_codigo ON envios_log(cadastro_codigo);"
+        )
+    };
+
+    for (const auto &ddl : comandos) {
+        if (!query.exec(ddl)) {
+            QTextStream(stderr) << "Erro ao aplicar migração inicial: " << query.lastError().text() << '\n';
+            return false;
+        }
     }
 
     return true;
