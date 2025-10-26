@@ -13,36 +13,37 @@
         </Grid.RowDefinitions>
 
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="0,0,0,16" Orientation="Vertical" Spacing="8">
+            <StackPanel Margin="0,0,0,16" Orientation="Vertical">
                 <TextBlock Text="Conta remetente" FontWeight="Bold" />
                 <ComboBox ItemsSource="{Binding Accounts}"
                           SelectedItem="{Binding SelectedAccount}"
                           DisplayMemberPath="Account.DisplayName"
-                          MinWidth="300" />
+                          MinWidth="300"
+                          Margin="0,4,0,0" />
 
-                <TextBlock Text="Nome do cliente" FontWeight="Bold" Margin="0,8,0,0" />
-                <TextBox Text="{Binding NomeCliente, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="Nome do cliente" FontWeight="Bold" Margin="0,12,0,0" />
+                <TextBox Text="{Binding NomeCliente, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="CPF" FontWeight="Bold" Margin="0,8,0,0" />
-                <TextBox Text="{Binding Cpf, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="CPF" FontWeight="Bold" Margin="0,12,0,0" />
+                <TextBox Text="{Binding Cpf, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="Situação atual" FontWeight="Bold" Margin="0,8,0,0" />
-                <TextBox Text="{Binding SituacaoAtual, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="Situação atual" FontWeight="Bold" Margin="0,12,0,0" />
+                <TextBox Text="{Binding SituacaoAtual, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="URL do portal" FontWeight="Bold" Margin="0,8,0,0" />
-                <TextBox Text="{Binding UrlPortal, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="URL do portal" FontWeight="Bold" Margin="0,12,0,0" />
+                <TextBox Text="{Binding UrlPortal, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="Para" FontWeight="Bold" Margin="0,8,0,0" />
-                <TextBox Text="{Binding EmailPara, UpdateSourceTrigger=PropertyChanged}" ToolTip="Separe múltiplos endereços com ponto e vírgula." />
+                <TextBlock Text="Para" FontWeight="Bold" Margin="0,12,0,0" />
+                <TextBox Text="{Binding EmailPara, UpdateSourceTrigger=PropertyChanged}" ToolTip="Separe múltiplos endereços com ponto e vírgula." Margin="0,4,0,0" />
 
-                <TextBlock Text="CC" FontWeight="Bold" Margin="0,8,0,0" />
-                <TextBox Text="{Binding EmailCc, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="CC" FontWeight="Bold" Margin="0,12,0,0" />
+                <TextBox Text="{Binding EmailCc, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="BCC" FontWeight="Bold" Margin="0,8,0,0" />
-                <TextBox Text="{Binding EmailBcc, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="BCC" FontWeight="Bold" Margin="0,12,0,0" />
+                <TextBox Text="{Binding EmailBcc, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="Valores adicionais (chave=valor por linha)" FontWeight="Bold" Margin="0,8,0,0" />
-                <TextBox Text="{Binding ValoresExtras, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="100" />
+                <TextBlock Text="Valores adicionais (chave=valor por linha)" FontWeight="Bold" Margin="0,12,0,0" />
+                <TextBox Text="{Binding ValoresExtras, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="100" Margin="0,4,0,0" />
             </StackPanel>
         </ScrollViewer>
 
@@ -60,9 +61,9 @@
         </GroupBox>
 
         <DockPanel Grid.Row="2">
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Spacing="8">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                 <Button Content="Pré-visualizar" Command="{Binding PreviewCommand}" MinWidth="120" />
-                <Button Content="Enviar" Command="{Binding SendCommand}" MinWidth="120" />
+                <Button Content="Enviar" Command="{Binding SendCommand}" MinWidth="120" Margin="8,0,0,0" />
             </StackPanel>
             <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
         </DockPanel>
