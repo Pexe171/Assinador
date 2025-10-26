@@ -1,15 +1,33 @@
 {
   "provedores": [
     {
-      "nome": "smtp_padrao",
+      "nome": "financeiro",
+      "provider": "smtp-imap",
       "host": "smtp.exemplo.com",
       "porta": 587,
       "seguranca": "STARTTLS",
-      "oauth2": false,
-      "escopos": []
+      "oauth2": true,
+      "oauth": {
+        "clientId": "app-mailer",
+        "clientSecret": "***",
+        "scopes": [
+          "https://mail.google.com/"
+        ]
+      },
+      "imap": {
+        "host": "imap.exemplo.com",
+        "porta": 993,
+        "seguranca": "SSL",
+        "idle": true
+      },
+      "tracking": {
+        "prefix": "AC-",
+        "cabecalho": "Message-Id"
+      }
     },
     {
-      "nome": "graph",
+      "nome": "corporativo",
+      "provider": "graph",
       "host": "graph.microsoft.com",
       "porta": 443,
       "seguranca": "TLS",
@@ -17,6 +35,19 @@
       "escopos": [
         "Mail.ReadWrite",
         "Mail.Send"
+      ],
+      "webhook": {
+        "url": "https://assinador.local/api/graph/webhook",
+        "resource": "/me/mailFolders('Inbox')/messages"
+      }
+    },
+    {
+      "nome": "suporte",
+      "provider": "gmail-api",
+      "projectId": "assinador-prod",
+      "pubsubSubscription": "projects/assinador-prod/subscriptions/gmail-webhook",
+      "scopes": [
+        "https://www.googleapis.com/auth/gmail.modify"
       ]
     }
   ]
