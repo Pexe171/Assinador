@@ -1,0 +1,23 @@
+{
+  "provedores": [
+    {
+      "nome": "smtp_padrao",
+      "host": "smtp.exemplo.com",
+      "porta": 587,
+      "seguranca": "STARTTLS",
+      "oauth2": false,
+      "escopos": []
+    },
+    {
+      "nome": "graph",
+      "host": "graph.microsoft.com",
+      "porta": 443,
+      "seguranca": "TLS",
+      "oauth2": true,
+      "escopos": [
+        "Mail.ReadWrite",
+        "Mail.Send"
+      ]
+    }
+  ]
+}
