@@ -1,32 +1,5 @@
-# Assinador
+# Novo Projeto em Preparação
 
-Bem-vindo ao novo ponto de partida do projeto Assinador. Todo o histórico de código foi
-limpo para oferecer um esqueleto enxuto, pronto para receber uma nova arquitetura com
-boas práticas de programação e blueprint.
+Este repositório está passando por uma renovação completa. Em breve, um novo projeto será lançado aqui, trazendo uma arquitetura bem planejada e seguindo as melhores práticas de desenvolvimento.
 
-## Próximos Passos Sugeridos
-
-1. Definir o objetivo do produto e mapear as jornadas principais.
-2. Elaborar um blueprint de alto nível com módulos, integrações e fluxos de dados.
-3. Criar um plano de entrega incremental que priorize valor ao usuário.
-4. Implementar testes desde o início para garantir qualidade contínua.
-5. Documentar cada decisão técnica de forma humanizada e acessível.
-
-## Valores do Projeto
-
-- **Clareza:** comunicar em português simples e direto.
-- **Colaboração:** incentivar revisões e feedback contínuo.
-- **Sustentabilidade:** estruturar o código para evoluir com segurança.
-
-Sinta-se à vontade para iniciar a próxima fase. Este repositório está limpo e preparado
-para receber a sua visão.
-
-## Como rodar os testes
-
-Após configurar o ambiente com CMake, execute os testes automatizados diretamente da pasta de build:
-
-```
-ctest --output-on-failure
-```
-
-O parâmetro `--output-on-failure` garante mensagens detalhadas sempre que um caso falhar, facilitando a investigação.
+Fique à vontade para voltar mais tarde e conferir as novidades.
