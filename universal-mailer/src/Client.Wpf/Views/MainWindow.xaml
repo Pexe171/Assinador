@@ -5,67 +5,90 @@
         Width="900"
         Height="720"
         WindowStartupLocation="CenterScreen">
-    <Grid Margin="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <Border Background="{StaticResource brush.bg.surface}"
+            BorderBrush="{StaticResource brush.border.default}"
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="24"
+            Margin="24">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="0,0,0,16" Orientation="Vertical">
-                <TextBlock Text="Conta remetente" FontWeight="Bold" />
-                <ComboBox ItemsSource="{Binding Accounts}"
-                          SelectedItem="{Binding SelectedAccount}"
-                          DisplayMemberPath="Account.DisplayName"
-                          MinWidth="300"
-                          Margin="0,4,0,0" />
+            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,0,0,16" Orientation="Vertical">
+                    <TextBlock Text="Conta remetente" FontWeight="SemiBold" />
+                    <ComboBox ItemsSource="{Binding Accounts}"
+                              SelectedItem="{Binding SelectedAccount}"
+                              DisplayMemberPath="Account.DisplayName"
+                              MinWidth="300"
+                              Margin="0,4,0,0" />
 
-                <TextBlock Text="Nome do cliente" FontWeight="Bold" Margin="0,12,0,0" />
-                <TextBox Text="{Binding NomeCliente, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
+                    <TextBlock Text="Nome do cliente" FontWeight="SemiBold" Margin="0,12,0,0" />
+                    <TextBox Text="{Binding NomeCliente, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="CPF" FontWeight="Bold" Margin="0,12,0,0" />
-                <TextBox Text="{Binding Cpf, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
+                    <TextBlock Text="CPF" FontWeight="SemiBold" Margin="0,12,0,0" />
+                    <TextBox Text="{Binding Cpf, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="Situação atual" FontWeight="Bold" Margin="0,12,0,0" />
-                <TextBox Text="{Binding SituacaoAtual, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
+                    <TextBlock Text="Situação atual" FontWeight="SemiBold" Margin="0,12,0,0" />
+                    <TextBox Text="{Binding SituacaoAtual, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="URL do portal" FontWeight="Bold" Margin="0,12,0,0" />
-                <TextBox Text="{Binding UrlPortal, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
+                    <TextBlock Text="URL do portal" FontWeight="SemiBold" Margin="0,12,0,0" />
+                    <TextBox Text="{Binding UrlPortal, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="Para" FontWeight="Bold" Margin="0,12,0,0" />
-                <TextBox Text="{Binding EmailPara, UpdateSourceTrigger=PropertyChanged}" ToolTip="Separe múltiplos endereços com ponto e vírgula." Margin="0,4,0,0" />
+                    <TextBlock Text="Para" FontWeight="SemiBold" Margin="0,12,0,0" />
+                    <TextBox Text="{Binding EmailPara, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Separe múltiplos endereços com ponto e vírgula."
+                             Margin="0,4,0,0" />
 
-                <TextBlock Text="CC" FontWeight="Bold" Margin="0,12,0,0" />
-                <TextBox Text="{Binding EmailCc, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
+                    <TextBlock Text="CC" FontWeight="SemiBold" Margin="0,12,0,0" />
+                    <TextBox Text="{Binding EmailCc, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="BCC" FontWeight="Bold" Margin="0,12,0,0" />
-                <TextBox Text="{Binding EmailBcc, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
+                    <TextBlock Text="BCC" FontWeight="SemiBold" Margin="0,12,0,0" />
+                    <TextBox Text="{Binding EmailBcc, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" />
 
-                <TextBlock Text="Valores adicionais (chave=valor por linha)" FontWeight="Bold" Margin="0,12,0,0" />
-                <TextBox Text="{Binding ValoresExtras, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="100" Margin="0,4,0,0" />
-            </StackPanel>
-        </ScrollViewer>
+                    <TextBlock Text="Valores adicionais (chave=valor por linha)" FontWeight="SemiBold" Margin="0,12,0,0" />
+                    <TextBox Text="{Binding ValoresExtras, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True"
+                             Height="100"
+                             Margin="0,4,0,0" />
+                </StackPanel>
+            </ScrollViewer>
 
-        <GroupBox Grid.Row="1" Header="Prévia obrigatória" Margin="0,0,0,16">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <TextBlock Text="{Binding PreviewSubject}" FontWeight="Bold" Margin="0,0,0,8" />
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <TextBox Text="{Binding PreviewHtml, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="200" />
-                </ScrollViewer>
-            </Grid>
-        </GroupBox>
+            <GroupBox Grid.Row="1" Header="Prévia obrigatória">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="{Binding PreviewSubject}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <TextBox Text="{Binding PreviewHtml, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 MinHeight="200" />
+                    </ScrollViewer>
+                </Grid>
+            </GroupBox>
 
-        <DockPanel Grid.Row="2">
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                <Button Content="Pré-visualizar" Command="{Binding PreviewCommand}" MinWidth="120" />
-                <Button Content="Enviar" Command="{Binding SendCommand}" MinWidth="120" Margin="8,0,0,0" />
-            </StackPanel>
-            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
-        </DockPanel>
-    </Grid>
+            <DockPanel Grid.Row="2">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button Content="Pré-visualizar"
+                            Command="{Binding PreviewCommand}"
+                            MinWidth="120" />
+                    <Button Content="Enviar"
+                            Command="{Binding SendCommand}"
+                            MinWidth="120"
+                            Margin="8,0,0,0" />
+                </StackPanel>
+                <TextBlock Text="{Binding StatusMessage}"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource brush.text.secondary}" />
+            </DockPanel>
+        </Grid>
+    </Border>
 </Window>

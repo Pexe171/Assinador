@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Paleta base -->
+    <Color x:Key="color.brand.primary">#FF0D6EFD</Color>
+    <Color x:Key="color.brand.primary.600">#FF0B5ED7</Color>
+    <Color x:Key="color.brand.primary.700">#FF0A58CA</Color>
+
+    <Color x:Key="color.state.success">#FF198754</Color>
+    <Color x:Key="color.state.warn">#FFFFC107</Color>
+    <Color x:Key="color.state.error">#FFDC3545</Color>
+
+    <Color x:Key="color.text.primary">#FF212529</Color>
+    <Color x:Key="color.text.secondary">#FF495057</Color>
+    <Color x:Key="color.text.inverse">#FFFFFFFF</Color>
+
+    <Color x:Key="color.border.default">#FFDEE2E6</Color>
+
+    <Color x:Key="color.bg.canvas">#FFF8F9FA</Color>
+    <Color x:Key="color.bg.surface">#FFFFFFFF</Color>
+
+    <Color x:Key="color.link.default">#FF0D6EFD</Color>
+
+    <!-- Brushes -->
+    <SolidColorBrush x:Key="brush.brand.primary" Color="{StaticResource color.brand.primary}" />
+    <SolidColorBrush x:Key="brush.brand.primary.600" Color="{StaticResource color.brand.primary.600}" />
+    <SolidColorBrush x:Key="brush.brand.primary.700" Color="{StaticResource color.brand.primary.700}" />
+
+    <SolidColorBrush x:Key="brush.state.success" Color="{StaticResource color.state.success}" />
+    <SolidColorBrush x:Key="brush.state.warn" Color="{StaticResource color.state.warn}" />
+    <SolidColorBrush x:Key="brush.state.error" Color="{StaticResource color.state.error}" />
+
+    <SolidColorBrush x:Key="brush.text.primary" Color="{StaticResource color.text.primary}" />
+    <SolidColorBrush x:Key="brush.text.secondary" Color="{StaticResource color.text.secondary}" />
+    <SolidColorBrush x:Key="brush.text.inverse" Color="{StaticResource color.text.inverse}" />
+
+    <SolidColorBrush x:Key="brush.border.default" Color="{StaticResource color.border.default}" />
+
+    <SolidColorBrush x:Key="brush.bg.canvas" Color="{StaticResource color.bg.canvas}" />
+    <SolidColorBrush x:Key="brush.bg.surface" Color="{StaticResource color.bg.surface}" />
+
+    <SolidColorBrush x:Key="brush.link.default" Color="{StaticResource color.link.default}" />
+</ResourceDictionary>
