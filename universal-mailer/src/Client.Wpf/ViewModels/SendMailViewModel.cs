@@ -8,6 +8,8 @@ using UniversalMailer.Core.Mail.Contracts;
 using UniversalMailer.Core.Mail.Models;
 using UniversalMailer.Engine.Services;
 
+using MailAccountModel = UniversalMailer.Core.Mail.Models.MailAccount;
+
 namespace UniversalMailer.Client.Wpf.ViewModels;
 
 /// <summary>
@@ -365,7 +367,7 @@ public sealed class SendMailViewModel : ObservableObject
 /// <summary>
 /// Vincula a conta de envio ao provedor selecionado.
 /// </summary>
-public sealed record DispatchAccountOption(MailAccount Account, IMailProvider Provider)
+public sealed record DispatchAccountOption(MailAccountModel Account, IMailProvider Provider)
 {
     public override string ToString() => Account.DisplayName;
 }
