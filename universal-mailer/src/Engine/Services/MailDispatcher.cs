@@ -3,6 +3,7 @@ using UniversalMailer.Core.Mail.Models;
 using UniversalMailer.Core.Mail.Records;
 using UniversalMailer.Engine.Templates;
 using UniversalMailer.Engine.Utils;
+using MailEnvelopeModel = UniversalMailer.Core.Mail.Models.MailEnvelope;
 
 namespace UniversalMailer.Engine.Services;
 
@@ -63,7 +64,7 @@ public sealed class MailDispatcher
             throw new ArgumentNullException(nameof(provider));
         }
 
-        var envelope = new MailEnvelope(request.To, request.Cc, request.Bcc);
+        var envelope = new MailEnvelopeModel(request.To, request.Cc, request.Bcc);
         var content = new MailContent(preview.Subject, preview.BodyHtml);
         var sendRequest = new MailSendRequest(request.Account, envelope, content, preview.TrackingId);
 
