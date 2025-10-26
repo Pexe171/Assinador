@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 
 namespace UniversalMailer.Engine.Templates;
@@ -21,6 +22,16 @@ public sealed class TemplateRenderer
 
     public async Task<string> RenderBodyAsync(TemplateDefinition definition, IReadOnlyDictionary<string, string> values, CancellationToken cancellationToken = default)
     {
+        if (definition is null)
+        {
+            throw new ArgumentNullException(nameof(definition));
+        }
+
+        if (definition.HasInlineBody)
+        {
+            return Replace(definition.BodyHtml!, values);
+        }
+
         var path = definition.ResolveBodyFullPath(_templatesDirectory);
         if (!File.Exists(path))
         {

@@ -9,6 +9,7 @@ namespace UniversalMailer.Core.Mail.Contracts;
 /// </summary>
 public enum MailProviderType
 {
+    FileSystem,
     Graph,
     SmtpImap,
     GmailApi
