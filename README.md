@@ -35,5 +35,6 @@ Este repositório está sendo preparado para receber o novo ecossistema do Assin
 ## Entregas em andamento
 
 * Passo 5 — Envio concluído: cliente WPF, engine e provedor de arquivos conectados para gerar prévias obrigatórias, disparar via `IMailProvider` e registrar `messageId`/`threadId`. Detalhes no [Passo 5 — Envio](docs/passo-5-envio.md).
+* Passo 6 — Acompanhamento multi-provedor: monitoramento de retornos via webhook do Graph e polling IMAP, classificação automática (VALIDADO/INVALIDADO/COMPLEMENTAR/DUPLO/MANUAL) com base em palavras-chave e persistência em `FileReturnStore`, além de job de SLA para marcar ATENÇÃO/VENCIDO e disparar follow-up usando a mesma conta de envio.
 
 Para detalhes adicionais e decisões de design, consulte o documento em `docs/blueprint-inicial.md`.
