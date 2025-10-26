@@ -1,64 +1,22 @@
-# Assinador Desktop
+# Assinador
 
-Aplicação desktop moderna para gerenciar múltiplas contas do Telegram e executar
-mapeamentos de grupos com alto nível de observabilidade. Construída com Python e
-PyQt6, integra Telethon, SQLAlchemy e notificações nativas do sistema
-operacional.
+Bem-vindo ao novo ponto de partida do projeto Assinador. Todo o histórico de código foi
+limpo para oferecer um esqueleto enxuto, pronto para receber uma nova arquitetura com
+boas práticas de programação e blueprint.
 
-## Principais Recursos
+## Próximos Passos Sugeridos
 
-- Interface com abas (Dashboard, Contas e Logs) e painel lateral para troca
-  rápida entre contas.
-- Autenticação de contas com suporte a 2FA e persistência de sessões.
-- Execução de tarefas assíncronas usando *threads* e filas para evitar travamentos.
-- Console de logs em tempo real dentro da própria interface.
-- Exportação planejada para CSV/JSON/Excel a partir dos dados mapeados.
-- Notificações nativas via `plyer` e suporte a execução em *background*.
-- Módulo de autoatualização com validação de integridade.
+1. Definir o objetivo do produto e mapear as jornadas principais.
+2. Elaborar um blueprint de alto nível com módulos, integrações e fluxos de dados.
+3. Criar um plano de entrega incremental que priorize valor ao usuário.
+4. Implementar testes desde o início para garantir qualidade contínua.
+5. Documentar cada decisão técnica de forma humanizada e acessível.
 
-## Novidades da versão 1.5 (Automação)
+## Valores do Projeto
 
-- Sistema de automação completo com motor em segundo plano e monitoramento em tempo real.
-- Agendador visual de tarefas com sincronização instantânea com o dashboard.
-- Relatórios básicos alimentados pelos dados da automação e das extrações recentes.
-- Melhorias de performance na listagem de tarefas agendadas, reduzindo reordenações desnecessárias.
+- **Clareza:** comunicar em português simples e direto.
+- **Colaboração:** incentivar revisões e feedback contínuo.
+- **Sustentabilidade:** estruturar o código para evoluir com segurança.
 
-## Arquitetura
-
-A arquitetura completa está detalhada em [`docs/arquitetura.md`](docs/arquitetura.md).
-
-## Notas de versão
-
-- [Versão 1.5 — Automação](docs/releases/versao-1.5.md)
-
-## Configuração do Ambiente
-
-1. Instale Python 3.11 ou superior e crie um ambiente virtual:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # Linux/macOS
-   .venv\\Scripts\\activate   # Windows
-   ```
-2. Instale as dependências:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Configure variáveis de ambiente do Telegram (API ID e HASH).
-
-## Execução
-
-```bash
-python -m TelegramManager.main
-```
-
-## Testes
-
-```bash
-pytest
-```
-
-## Build
-
-A distribuição pode ser gerada com ferramentas como PyInstaller ou Briefcase.
-O módulo `TelegramManager/updater/auto_updater.py` prevê atualizações incrementais após a
-instalação inicial.
+Sinta-se à vontade para iniciar a próxima fase. Este repositório está limpo e preparado
+para receber a sua visão.
