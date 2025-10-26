@@ -27,6 +27,7 @@ Este documento detalha como o Assinador passa a conversar com qualquer provedor 
 * Usa um `IGraphMailClient` para encapsular o `GraphServiceClient`.
 * Suporta envio, rascunho, webhook push e rastreio por `messageId`.
 * Log estruturado para cada operação.
+* Autenticação exclusivamente via OAuth2, com segredos protegidos no Credential Manager (DPAPI).
 
 ### 4.2 SMTP/IMAP (`SmtpImapMailProvider`)
 
@@ -38,6 +39,7 @@ Este documento detalha como o Assinador passa a conversar com qualquer provedor 
 
 * Opcional, preparado para Pub/Sub de baixa latência.
 * Encapsula chamadas via `IGmailApiClient` e permite customizações por `GmailApiAdapterOptions`.
+* Usa somente OAuth2; `clientSecret` e `refreshToken` ficam criptografados no Windows Credential Manager.
 
 ## 5. Configuração
 

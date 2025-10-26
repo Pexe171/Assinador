@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
 using UniversalMailer.Client.Wpf.ViewModels;
 using UniversalMailer.Core.Mail.Models;
+using UniversalMailer.Core.Mail.Policies;
 using UniversalMailer.Engine.Services;
 using UniversalMailer.Engine.Templates;
 using UniversalMailer.Mail.Adapters.FileSystem;
@@ -45,7 +47,8 @@ public partial class App : Application
         var templateRepository = new JsonTemplateRepository(manifestPath);
         var renderer = new TemplateRenderer(templateDirectory);
         var dispatchStore = new FileMailDispatchStore(logPath);
-        var dispatcher = new MailDispatcher(templateRepository, renderer, dispatchStore);
+        var recipientPolicy = LoadRecipientPolicy(baseDirectory);
+        var dispatcher = new MailDispatcher(templateRepository, renderer, dispatchStore, recipientPolicy);
 
         var accounts = LoadAccounts(configPath, baseDirectory);
         var viewModel = new SendMailViewModel(dispatcher, accounts);
@@ -121,6 +124,33 @@ public partial class App : Application
         {
             return string.Empty;
         }
+    }
+
+    private static IMailRecipientPolicy LoadRecipientPolicy(string baseDirectory)
+    {
+        var options = new MailRecipientPolicyOptions();
+        var candidates = new[]
+        {
+            Path.Combine(baseDirectory, "whitelist_domains.txt"),
+            ResolvePath(baseDirectory, Path.Combine("..", "..", "..", "..", "..", "config", "whitelist_domains.txt"))
+        };
+
+        var whitelistPath = candidates.FirstOrDefault(File.Exists);
+        if (whitelistPath is not null)
+        {
+            foreach (var line in File.ReadAllLines(whitelistPath))
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#"))
+                {
+                    continue;
+                }
+
+                options.CcDomainWhitelist.Add(trimmed);
+            }
+        }
+
+        return new MailRecipientPolicy(options);
     }
 
     private static IReadOnlyCollection<DispatchAccountOption> LoadAccounts(string configPath, string baseDirectory)
