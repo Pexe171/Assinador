@@ -1,60 +1,23 @@
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using UniversalMailer.Core.Mail.Contracts;
+using UniversalMailer.Core.Mail.Models;
 
 namespace UniversalMailer.Mail.Adapters.GmailApiAdapter;
 
 /// <summary>
-/// Adapter para a API nativa do Gmail. Mantém compatibilidade com Pub/Sub para baixa latência.
+/// Adapter da Gmail API ainda não migrado para a nova pilha de envio.
+/// Por enquanto, mantemos a classe apenas para sinalizar que o recurso
+/// não está disponível nesta distribuição.
 /// </summary>
 public sealed class GmailApiMailProvider : IMailProvider
 {
-    private readonly IGmailApiClient _client;
-    private readonly GmailApiAdapterOptions _options;
-    private readonly ILogger<GmailApiMailProvider> _logger;
+    private const string NotSupportedMessage = "O adapter da Gmail API ainda não está disponível nesta versão.";
 
-    public GmailApiMailProvider(
-        IGmailApiClient client,
-        IOptions<GmailApiAdapterOptions> options,
-        ILogger<GmailApiMailProvider> logger)
+    public Task<MailSendResult> SendAsync(MailSendRequest request, CancellationToken cancellationToken = default)
     {
-        _client = client ?? throw new ArgumentNullException(nameof(client));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    public Task<MailOperationResult> SendAsync(SendMessageRequest request, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Enviando mensagem pela Gmail API para {Account}", request.Account.AccountId);
-        return _client.SendAsync(request, cancellationToken);
-    }
-
-    public Task<MailOperationResult> SaveDraftAsync(SaveDraftRequest request, CancellationToken cancellationToken = default)
-    {
-        return _client.SaveDraftAsync(request, cancellationToken);
-    }
-
-    public Task<MailMessage?> GetMessageAsync(GetMessageRequest request, CancellationToken cancellationToken = default)
-    {
-        return _client.GetMessageAsync(request, cancellationToken);
-    }
-
-    public Task<IReadOnlyList<MailMessage>> ListInboxAsync(ListInboxRequest request, CancellationToken cancellationToken = default)
-    {
-        return _client.ListInboxAsync(request, cancellationToken);
-    }
-
-    public Task<MailOperationResult> ReplyAllAsync(ReplyAllRequest request, CancellationToken cancellationToken = default)
-    {
-        return _client.ReplyAllAsync(request, cancellationToken);
-    }
-
-    public Task<MailTrackingInfo> TrackIdAsync(TrackMessageRequest request, CancellationToken cancellationToken = default)
-    {
-        return _client.TrackIdAsync(request, cancellationToken);
+        ArgumentNullException.ThrowIfNull(request);
+        throw new NotSupportedException(NotSupportedMessage);
     }
 }
