@@ -30,5 +30,6 @@ Este repositório está sendo preparado para receber o novo ecossistema do Assin
 1. Criar a solution `.sln` com todos os projetos vazios, definindo referências entre camadas conforme as responsabilidades.
 2. Documentar padrões de configuração (appsettings, secrets, logging estruturado) para garantir consistência entre serviços.
 3. Configurar automações iniciais (CI/CD, linting, testes) para assegurar qualidade desde o início.
+4. Padronizar templates transacionais seguindo o [Passo 4 — Template e Corpo do E-mail](docs/passo-4-template-email.md).
 
 Para detalhes adicionais e decisões de design, consulte o documento em `docs/blueprint-inicial.md`.
