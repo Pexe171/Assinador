@@ -1,0 +1,70 @@
+<Window x:Class="UniversalMailer.Client.Wpf.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Assinador – Envio"
+        Width="900"
+        Height="720"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,0,16" Orientation="Vertical" Spacing="8">
+                <TextBlock Text="Conta remetente" FontWeight="Bold" />
+                <ComboBox ItemsSource="{Binding Accounts}"
+                          SelectedItem="{Binding SelectedAccount}"
+                          DisplayMemberPath="Account.DisplayName"
+                          MinWidth="300" />
+
+                <TextBlock Text="Nome do cliente" FontWeight="Bold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding NomeCliente, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Text="CPF" FontWeight="Bold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding Cpf, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Text="Situação atual" FontWeight="Bold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding SituacaoAtual, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Text="URL do portal" FontWeight="Bold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding UrlPortal, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Text="Para" FontWeight="Bold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding EmailPara, UpdateSourceTrigger=PropertyChanged}" ToolTip="Separe múltiplos endereços com ponto e vírgula." />
+
+                <TextBlock Text="CC" FontWeight="Bold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding EmailCc, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Text="BCC" FontWeight="Bold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding EmailBcc, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Text="Valores adicionais (chave=valor por linha)" FontWeight="Bold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding ValoresExtras, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="100" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <GroupBox Grid.Row="1" Header="Prévia obrigatória" Margin="0,0,0,16">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding PreviewSubject}" FontWeight="Bold" Margin="0,0,0,8" />
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <TextBox Text="{Binding PreviewHtml}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="200" />
+                </ScrollViewer>
+            </Grid>
+        </GroupBox>
+
+        <DockPanel Grid.Row="2">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Spacing="8">
+                <Button Content="Pré-visualizar" Command="{Binding PreviewCommand}" MinWidth="120" />
+                <Button Content="Enviar" Command="{Binding SendCommand}" MinWidth="120" />
+            </StackPanel>
+            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
+        </DockPanel>
+    </Grid>
+</Window>

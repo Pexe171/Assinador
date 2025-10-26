@@ -32,4 +32,8 @@ Este repositório está sendo preparado para receber o novo ecossistema do Assin
 3. Configurar automações iniciais (CI/CD, linting, testes) para assegurar qualidade desde o início.
 4. Padronizar templates transacionais seguindo o [Passo 4 — Template e Corpo do E-mail](docs/passo-4-template-email.md).
 
+## Entregas em andamento
+
+* Passo 5 — Envio concluído: cliente WPF, engine e provedor de arquivos conectados para gerar prévias obrigatórias, disparar via `IMailProvider` e registrar `messageId`/`threadId`. Detalhes no [Passo 5 — Envio](docs/passo-5-envio.md).
+
 Para detalhes adicionais e decisões de design, consulte o documento em `docs/blueprint-inicial.md`.

@@ -1,0 +1,10 @@
+{
+  "templates": {
+    "validacao_renda": {
+      "displayName": "Validação de Renda",
+      "version": "1.0.0",
+      "subjectTemplate": "Validação de Renda – {{NOME}} – CPF {{CPF}} – {{ID}}",
+      "bodyPath": "validacao_renda_body.html"
+    }
+  }
+}
