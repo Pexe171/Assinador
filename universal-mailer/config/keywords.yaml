@@ -1,0 +1,8 @@
+validado:
+  - "renda comprovada"
+  - "documento aceito"
+invalidado:
+  - "documento ilegível"
+  - "dados inconsistentes"
+complementar:
+  - "enviar comprovante atualizado"
