@@ -12,9 +12,21 @@
     <ProjectReference Include="../Persistence/Persistence.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="../../config/mail.providers.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="../../templates/templates.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="../../templates/validacao_renda_body.html" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="../../templates/validacao_renda.oft" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\config\mail.providers.json">
+      <Link>mail.providers.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\templates\templates.json">
+      <Link>templates.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\templates\validacao_renda_body.html">
+      <Link>validacao_renda_body.html</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\templates\validacao_renda.oft">
+      <Link>validacao_renda.oft</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>
