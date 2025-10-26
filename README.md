@@ -32,6 +32,29 @@ Este repositório está sendo preparado para receber o novo ecossistema do Assin
 3. Configurar automações iniciais (CI/CD, linting, testes) para assegurar qualidade desde o início.
 4. Padronizar templates transacionais seguindo o [Passo 4 — Template e Corpo do E-mail](docs/passo-4-template-email.md).
 
+## Banco de Dados e API REST
+
+O ecossistema agora conta com uma API REST (`src/Api`) construída sobre **ASP.NET Minimal APIs** e um banco relacional gerenciado via **EF Core**. Os principais pontos:
+
+* **Persistência:** SQLite por padrão (`Database:Provider = "sqlite"`), com suporte imediato a PostgreSQL bastando alterar `appsettings.json` para `"postgres"` e apontar `ConnectionString`. As migrations vivem em `src/Persistence/Migrations` e garantem o mesmo schema em ambos os bancos.
+* **Envio de e-mails:** endpoint `POST /emails/send` processa templates armazenados no banco, renderiza variáveis e dispara via provedor cadastrado (FileSystem por padrão).
+* **Consultas:**
+  * `GET /emails/{protocolo}` recupera detalhes de um envio.
+  * `GET /returns/{protocolo}` retorna o histórico consolidado de retornos.
+  * `GET /search` permite localizar envios e retornos por protocolo, e-mail ou status.
+* **Administração:**
+  * `GET|POST|PUT|DELETE /admin/templates` para versionar templates HTML.
+  * `GET|POST|PUT|DELETE /admin/providers` para cadastrar provedores e contas (incluindo diretórios de saída do FileSystem).
+
+Para rodar localmente:
+
+```bash
+cd universal-mailer
+dotnet run --project src/Api/Api.csproj
+```
+
+O Swagger ficará disponível em `/swagger` quando executado em modo Development.
+
 ## Entregas em andamento
 
 * Passo 5 — Envio concluído: cliente WPF, engine e provedor de arquivos conectados para gerar prévias obrigatórias, disparar via `IMailProvider` e registrar `messageId`/`threadId`. Detalhes no [Passo 5 — Envio](docs/passo-5-envio.md).
