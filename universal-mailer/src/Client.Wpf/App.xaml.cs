@@ -125,12 +125,9 @@ public partial class App : Application
 
     private static IReadOnlyCollection<DispatchAccountOption> LoadAccounts(string configPath, string baseDirectory)
     {
-        if (!File.Exists(configPath))
-        {
-            throw new FileNotFoundException($"Arquivo de configuração de contas não encontrado: {configPath}");
-        }
+        var resolvedConfigPath = EnsureConfigFile(configPath, baseDirectory);
 
-        var json = File.ReadAllText(configPath);
+        var json = File.ReadAllText(resolvedConfigPath);
         var payload = JsonSerializer.Deserialize<MailProviderConfig>(json, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -164,6 +161,50 @@ public partial class App : Application
 
     private static string ResolvePath(string baseDirectory, string relativePath)
         => Path.GetFullPath(Path.Combine(baseDirectory, relativePath));
+
+    private static string EnsureConfigFile(string configPath, string baseDirectory)
+    {
+        if (File.Exists(configPath))
+        {
+            return configPath;
+        }
+
+        var fallbackPath = ResolvePath(baseDirectory, Path.Combine("..", "..", "..", "..", "..", "config", "mail.providers.json"));
+        if (File.Exists(fallbackPath))
+        {
+            try
+            {
+                var targetDirectory = Path.GetDirectoryName(configPath);
+                if (!string.IsNullOrWhiteSpace(targetDirectory))
+                {
+                    Directory.CreateDirectory(targetDirectory);
+                }
+
+                File.Copy(fallbackPath, configPath, overwrite: false);
+
+                if (File.Exists(configPath))
+                {
+                    return configPath;
+                }
+            }
+            catch (IOException)
+            {
+                // Ignorado: se não conseguir copiar, continua usando o caminho original.
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Ignorado: sem permissão para copiar, usa o arquivo de origem diretamente.
+            }
+
+            return fallbackPath;
+        }
+
+        var message = new StringBuilder();
+        message.AppendLine($"Arquivo de configuração de contas não encontrado: {configPath}");
+        message.Append($"Também foi verificado o caminho alternativo: {fallbackPath}");
+
+        throw new FileNotFoundException(message.ToString());
+    }
 
     private sealed class MailProviderConfig
     {
