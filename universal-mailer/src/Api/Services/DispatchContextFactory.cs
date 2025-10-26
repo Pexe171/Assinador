@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UniversalMailer.Api.Infrastructure;
+using UniversalMailer.Api.Security;
 using UniversalMailer.Core.Mail.Contracts;
 using UniversalMailer.Core.Mail.Models;
 using UniversalMailer.Mail.Adapters.Common;
@@ -11,11 +12,13 @@ public sealed class DispatchContextFactory
 {
     private readonly MailerDbContext _context;
     private readonly MailProviderRegistry _registry;
+    private readonly ProviderSecretManager _secretManager;
 
-    public DispatchContextFactory(MailerDbContext context, MailProviderRegistry registry)
+    public DispatchContextFactory(MailerDbContext context, MailProviderRegistry registry, ProviderSecretManager secretManager)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _secretManager = secretManager ?? throw new ArgumentNullException(nameof(secretManager));
     }
 
     public async Task<DispatchContext> CreateAsync(string accountId, CancellationToken cancellationToken)
@@ -41,7 +44,8 @@ public sealed class DispatchContextFactory
             throw new InvalidOperationException($"O provedor '{account.Provider.DisplayName}' está inativo.");
         }
 
-        var settings = JsonHelpers.DeserializeDictionary(account.Provider.SettingsJson);
+        var storedSettings = JsonHelpers.DeserializeDictionary(account.Provider.SettingsJson);
+        var settings = _secretManager.ResolveForRuntime(storedSettings);
         var descriptor = new MailProviderDescriptor(account.Provider.Name, account.Provider.Type, settings);
         var provider = _registry.Resolve(descriptor);
 

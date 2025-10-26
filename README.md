@@ -61,3 +61,9 @@ O Swagger ficará disponível em `/swagger` quando executado em modo Development
 * Passo 6 — Acompanhamento multi-provedor: monitoramento de retornos via webhook do Graph e polling IMAP, classificação automática (VALIDADO/INVALIDADO/COMPLEMENTAR/DUPLO/MANUAL) com base em palavras-chave e persistência em `FileReturnStore`, além de job de SLA para marcar ATENÇÃO/VENCIDO e disparar follow-up usando a mesma conta de envio.
 
 Para detalhes adicionais e decisões de design, consulte o documento em `docs/blueprint-inicial.md`.
+
+## Segurança e credenciais
+
+* **OAuth2 obrigatório** para adapters do Microsoft Graph e da Gmail API. Qualquer configuração que tente usar senhas em texto plano é rejeitada automaticamente.
+* **Proteção de segredos** via DPAPI armazenada no **Windows Credential Manager**, garantindo que `clientSecret`, `refreshToken` e campos equivalentes não fiquem expostos no banco.
+* **Whitelist para cópia (CC):** apenas domínios listados em `config/whitelist_domains.txt` (ou no bloco `Security:Recipients` do `appsettings.json`) podem receber cópia, com deduplicação automática entre CC e CCO.

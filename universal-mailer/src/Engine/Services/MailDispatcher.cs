@@ -1,5 +1,6 @@
 using UniversalMailer.Core.Mail.Contracts;
 using UniversalMailer.Core.Mail.Models;
+using UniversalMailer.Core.Mail.Policies;
 using UniversalMailer.Core.Mail.Records;
 using UniversalMailer.Engine.Templates;
 using UniversalMailer.Engine.Utils;
@@ -15,15 +16,18 @@ public sealed class MailDispatcher
     private readonly ITemplateRepository _templateRepository;
     private readonly TemplateRenderer _renderer;
     private readonly IMailDispatchStore _dispatchStore;
+    private readonly IMailRecipientPolicy _recipientPolicy;
 
     public MailDispatcher(
         ITemplateRepository templateRepository,
         TemplateRenderer renderer,
-        IMailDispatchStore dispatchStore)
+        IMailDispatchStore dispatchStore,
+        IMailRecipientPolicy recipientPolicy)
     {
         _templateRepository = templateRepository ?? throw new ArgumentNullException(nameof(templateRepository));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         _dispatchStore = dispatchStore ?? throw new ArgumentNullException(nameof(dispatchStore));
+        _recipientPolicy = recipientPolicy ?? throw new ArgumentNullException(nameof(recipientPolicy));
     }
 
     public async Task<MailPreview> GeneratePreviewAsync(MailDispatchRequest request, CancellationToken cancellationToken = default)
@@ -64,7 +68,8 @@ public sealed class MailDispatcher
             throw new ArgumentNullException(nameof(provider));
         }
 
-        var envelope = new MailEnvelopeModel(request.To, request.Cc, request.Bcc);
+        var sanitized = _recipientPolicy.Apply(request.To, request.Cc, request.Bcc);
+        var envelope = new MailEnvelopeModel(sanitized.To, sanitized.Cc, sanitized.Bcc);
         var content = new MailContent(preview.Subject, preview.BodyHtml);
         var sendRequest = new MailSendRequest(request.Account, envelope, content, preview.TrackingId);
 

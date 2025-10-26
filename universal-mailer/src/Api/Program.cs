@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -8,10 +9,13 @@ using UniversalMailer.Api.Contracts.Returns;
 using UniversalMailer.Api.Contracts.Search;
 using UniversalMailer.Api.Infrastructure;
 using UniversalMailer.Api.Services;
+using UniversalMailer.Api.Security;
 using UniversalMailer.Core.Mail.Contracts;
 using UniversalMailer.Core.Mail.Models;
+using UniversalMailer.Core.Mail.Policies;
 using UniversalMailer.Core.Returns.Contracts;
 using UniversalMailer.Core.Returns.Models;
+using UniversalMailer.Core.Security;
 using UniversalMailer.Engine.Services;
 using UniversalMailer.Engine.Templates;
 using UniversalMailer.Mail.Adapters.Common;
@@ -23,6 +27,90 @@ using UniversalMailer.Persistence.Stores;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection("Database"));
+
+builder.Services.AddSingleton(sp =>
+{
+    var options = new MailRecipientPolicyOptions();
+    var message = builder.Configuration.GetValue<string>("Security:Recipients:DomainBlockedMessage");
+    if (!string.IsNullOrWhiteSpace(message))
+    {
+        options.DomainBlockedMessage = message!;
+    }
+
+    var whitelistFromConfig = builder.Configuration
+        .GetSection("Security:Recipients:CcDomainWhitelist")
+        .Get<string[]>() ?? Array.Empty<string>();
+
+    foreach (var domain in whitelistFromConfig.Select(d => d?.Trim()).Where(d => !string.IsNullOrWhiteSpace(d)))
+    {
+        options.CcDomainWhitelist.Add(domain!);
+    }
+
+    var whitelistPath = Path.Combine(builder.Environment.ContentRootPath, "config", "whitelist_domains.txt");
+    if (File.Exists(whitelistPath))
+    {
+        foreach (var line in File.ReadAllLines(whitelistPath))
+        {
+            var trimmed = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#"))
+            {
+                continue;
+            }
+
+            options.CcDomainWhitelist.Add(trimmed);
+        }
+    }
+
+    return options;
+});
+
+builder.Services.AddSingleton<IMailRecipientPolicy>(sp => new MailRecipientPolicy(sp.GetRequiredService<MailRecipientPolicyOptions>()));
+
+builder.Services.AddSingleton(sp =>
+{
+    var section = builder.Configuration.GetSection("Security:SensitiveSettings");
+    var options = new SensitiveSettingsOptions();
+
+    var mask = section.GetValue<string>("Mask");
+    if (!string.IsNullOrWhiteSpace(mask))
+    {
+        options.Mask = mask!;
+    }
+
+    var prefix = section.GetValue<string>("CredentialPrefix");
+    if (!string.IsNullOrWhiteSpace(prefix))
+    {
+        options.CredentialPrefix = prefix!;
+    }
+
+    var keys = section.GetSection("Keys").Get<string[]>();
+    if (keys is not null && keys.Length > 0)
+    {
+        options.Keys.Clear();
+        foreach (var key in keys.Select(k => k?.Trim()).Where(k => !string.IsNullOrWhiteSpace(k)))
+        {
+            options.Keys.Add(key!);
+        }
+    }
+
+    return options;
+});
+
+if (OperatingSystem.IsWindows())
+{
+    builder.Services.AddSingleton<ISecretStore>(_ => new WindowsCredentialManagerSecretStore("UniversalMailer"));
+}
+else
+{
+    builder.Services.AddSingleton<ISecretStore>(_ => throw new PlatformNotSupportedException("O armazenamento seguro de segredos exige Windows."));
+}
+
+builder.Services.AddSingleton(sp =>
+{
+    var secretStore = sp.GetRequiredService<ISecretStore>();
+    var options = sp.GetRequiredService<SensitiveSettingsOptions>();
+    return new ProviderSecretManager(secretStore, options);
+});
 
 builder.Services.AddDbContext<MailerDbContext>((serviceProvider, options) =>
 {
@@ -348,6 +436,7 @@ var providers = admin.MapGroup("/providers");
 
 providers.MapGet("/", async Task<IReadOnlyCollection<ProviderResponse>> (
     MailerDbContext db,
+    ProviderSecretManager secretManager,
     CancellationToken cancellationToken) =>
 {
     var entities = await db.MailProviders
@@ -357,12 +446,13 @@ providers.MapGet("/", async Task<IReadOnlyCollection<ProviderResponse>> (
         .ToListAsync(cancellationToken)
         .ConfigureAwait(false);
 
-    return entities.Select(MapProvider).ToList();
+    return entities.Select(entity => MapProvider(entity, secretManager)).ToList();
 });
 
 providers.MapGet("/{id:guid}", async Task<Results<Ok<ProviderResponse>, NotFound>> (
     Guid id,
     MailerDbContext db,
+    ProviderSecretManager secretManager,
     CancellationToken cancellationToken) =>
 {
     var entity = await db.MailProviders
@@ -373,12 +463,13 @@ providers.MapGet("/{id:guid}", async Task<Results<Ok<ProviderResponse>, NotFound
 
     return entity is null
         ? TypedResults.NotFound()
-        : TypedResults.Ok(MapProvider(entity));
+        : TypedResults.Ok(MapProvider(entity, secretManager));
 });
 
 providers.MapPost("/", async Task<Results<Created<ProviderResponse>, BadRequest<IDictionary<string, string>>>> (
     UpsertProviderRequest request,
     MailerDbContext db,
+    ProviderSecretManager secretManager,
     CancellationToken cancellationToken) =>
 {
     if (string.IsNullOrWhiteSpace(request.Name))
@@ -392,17 +483,22 @@ providers.MapPost("/", async Task<Results<Created<ProviderResponse>, BadRequest<
         return TypedResults.BadRequest(new Dictionary<string, string> { ["erro"] = "Já existe um provedor com esse nome interno." });
     }
 
-    var entity = CreateProviderEntity(request);
+    ValidateOAuthOnly(request.Tipo, request.Configuracoes);
+    var protectedSettings = secretManager.Protect(request.Name, request.Configuracoes);
+    EnsureOAuthSettings(request.Tipo, protectedSettings);
+
+    var entity = CreateProviderEntity(request, protectedSettings);
     db.MailProviders.Add(entity);
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-    return TypedResults.Created($"/admin/providers/{entity.Id}", MapProvider(entity));
+    return TypedResults.Created($"/admin/providers/{entity.Id}", MapProvider(entity, secretManager));
 });
 
 providers.MapPut("/{id:guid}", async Task<Results<Ok<ProviderResponse>, NotFound>> (
     Guid id,
     UpsertProviderRequest request,
     MailerDbContext db,
+    ProviderSecretManager secretManager,
     CancellationToken cancellationToken) =>
 {
     var entity = await db.MailProviders
@@ -418,7 +514,11 @@ providers.MapPut("/{id:guid}", async Task<Results<Ok<ProviderResponse>, NotFound
     entity.Name = request.Name;
     entity.DisplayName = request.DisplayName;
     entity.Type = request.Tipo;
-    entity.SettingsJson = JsonHelpers.SerializeDictionary(request.Configuracoes);
+    ValidateOAuthOnly(request.Tipo, request.Configuracoes);
+    var currentSettings = JsonHelpers.DeserializeDictionary(entity.SettingsJson);
+    var protectedSettings = secretManager.Protect(request.Name, request.Configuracoes, currentSettings);
+    EnsureOAuthSettings(request.Tipo, protectedSettings);
+    entity.SettingsJson = JsonHelpers.SerializeDictionary(protectedSettings);
     entity.IsActive = request.Ativo;
     entity.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -426,7 +526,7 @@ providers.MapPut("/{id:guid}", async Task<Results<Ok<ProviderResponse>, NotFound
 
     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-    return TypedResults.Ok(MapProvider(entity));
+    return TypedResults.Ok(MapProvider(entity, secretManager));
 });
 
 providers.MapDelete("/{id:guid}", async Task<Results<NoContent, NotFound>> (
@@ -463,7 +563,55 @@ static TemplateResponse MapTemplate(TemplateEntity entity)
         entity.CreatedAt,
         entity.UpdatedAt);
 
-static ProviderResponse MapProvider(MailProviderEntity entity)
+static void ValidateOAuthOnly(MailProviderType type, IReadOnlyDictionary<string, string> settings)
+{
+    if (settings is null)
+    {
+        return;
+    }
+
+    if (type is not MailProviderType.Graph and not MailProviderType.GmailApi)
+    {
+        return;
+    }
+
+    var offending = settings.Keys.FirstOrDefault(key => key.Contains("password", StringComparison.OrdinalIgnoreCase));
+    if (!string.IsNullOrWhiteSpace(offending))
+    {
+        throw new InvalidOperationException($"O campo '{offending}' não é permitido para este provedor. Utilize OAuth2.");
+    }
+}
+
+static void EnsureOAuthSettings(MailProviderType type, IReadOnlyDictionary<string, string> settings)
+{
+    if (settings is null)
+    {
+        throw new InvalidOperationException("Configurações do provedor não informadas.");
+    }
+
+    if (type == MailProviderType.Graph)
+    {
+        Require("tenantId");
+        Require("clientId");
+        Require("clientSecret");
+    }
+    else if (type == MailProviderType.GmailApi)
+    {
+        Require("clientId");
+        Require("clientSecret");
+        Require("refreshToken");
+    }
+
+    static void Require(string key)
+    {
+        if (!settings.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"A configuração '{key}' é obrigatória para uso de OAuth2.");
+        }
+    }
+}
+
+static ProviderResponse MapProvider(MailProviderEntity entity, ProviderSecretManager secretManager)
 {
     var contas = entity.Accounts
         .OrderBy(account => account.AccountId)
@@ -478,19 +626,22 @@ static ProviderResponse MapProvider(MailProviderEntity entity)
             account.UpdatedAt))
         .ToList();
 
+    var settings = JsonHelpers.DeserializeDictionary(entity.SettingsJson);
+    var masked = secretManager.MaskForResponse(settings);
+
     return new ProviderResponse(
         entity.Id,
         entity.Name,
         entity.DisplayName,
         entity.Type.ToString(),
-        JsonHelpers.DeserializeDictionary(entity.SettingsJson),
+        masked,
         entity.IsActive,
         entity.CreatedAt,
         entity.UpdatedAt,
         contas);
 }
 
-static MailProviderEntity CreateProviderEntity(UpsertProviderRequest request)
+static MailProviderEntity CreateProviderEntity(UpsertProviderRequest request, IReadOnlyDictionary<string, string> protectedSettings)
 {
     var now = DateTimeOffset.UtcNow;
     var provider = new MailProviderEntity
@@ -499,7 +650,7 @@ static MailProviderEntity CreateProviderEntity(UpsertProviderRequest request)
         Name = request.Name,
         DisplayName = request.DisplayName,
         Type = request.Tipo,
-        SettingsJson = JsonHelpers.SerializeDictionary(request.Configuracoes),
+        SettingsJson = JsonHelpers.SerializeDictionary(protectedSettings),
         IsActive = request.Ativo,
         CreatedAt = now,
         UpdatedAt = now,
