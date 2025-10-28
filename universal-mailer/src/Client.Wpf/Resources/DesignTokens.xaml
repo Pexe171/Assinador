@@ -1,5 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                    xmlns:effects="clr-namespace:System.Windows.Media.Effects;assembly=PresentationCore">
     <!-- Paleta base -->
     <Color x:Key="color.brand.primary">#FF0D6EFD</Color>
     <Color x:Key="color.brand.primary.600">#FF0B5ED7</Color>
@@ -39,4 +41,58 @@
     <SolidColorBrush x:Key="brush.bg.surface" Color="{StaticResource color.bg.surface}" />
 
     <SolidColorBrush x:Key="brush.link.default" Color="{StaticResource color.link.default}" />
+
+    <!-- Tipografia -->
+    <FontFamily x:Key="font.family.base">Segoe UI</FontFamily>
+    <FontFamily x:Key="font.family.mono">Cascadia Mono</FontFamily>
+
+    <sys:Double x:Key="font.size.display">24</sys:Double>
+    <sys:Double x:Key="font.size.h1">20</sys:Double>
+    <sys:Double x:Key="font.size.h2">18</sys:Double>
+    <sys:Double x:Key="font.size.body">14</sys:Double>
+    <sys:Double x:Key="font.size.small">12</sys:Double>
+    <sys:Double x:Key="font.size.mono">12</sys:Double>
+
+    <FontWeight x:Key="font.weight.regular">Normal</FontWeight>
+    <FontWeight x:Key="font.weight.medium">SemiBold</FontWeight>
+    <FontWeight x:Key="font.weight.bold">Bold</FontWeight>
+
+    <sys:Double x:Key="line.height.display">34</sys:Double>
+    <sys:Double x:Key="line.height.h1">28</sys:Double>
+    <sys:Double x:Key="line.height.h2">26</sys:Double>
+    <sys:Double x:Key="line.height.body">20</sys:Double>
+    <sys:Double x:Key="line.height.small">17</sys:Double>
+
+    <!-- Espaçamentos (escala de 8pt) -->
+    <sys:Double x:Key="space.4">4</sys:Double>
+    <sys:Double x:Key="space.8">8</sys:Double>
+    <sys:Double x:Key="space.12">12</sys:Double>
+    <sys:Double x:Key="space.16">16</sys:Double>
+    <sys:Double x:Key="space.24">24</sys:Double>
+    <sys:Double x:Key="space.32">32</sys:Double>
+
+    <!-- Raios -->
+    <CornerRadius x:Key="radius.small">4</CornerRadius>
+    <CornerRadius x:Key="radius.default">8</CornerRadius>
+    <CornerRadius x:Key="radius.large">12</CornerRadius>
+
+    <!-- Sombras -->
+    <effects:DropShadowEffect x:Key="shadow.subtle"
+                              BlurRadius="2"
+                              ShadowDepth="1"
+                              Direction="270"
+                              Color="#99000000"
+                              Opacity="0.06" />
+    <effects:DropShadowEffect x:Key="shadow.card"
+                              BlurRadius="8"
+                              ShadowDepth="2"
+                              Direction="270"
+                              Color="#99000000"
+                              Opacity="0.08" />
+    <effects:DropShadowEffect x:Key="shadow.elevated"
+                              BlurRadius="18"
+                              ShadowDepth="6"
+                              Direction="270"
+                              Color="#99000000"
+                              Opacity="0.12" />
 </ResourceDictionary>
