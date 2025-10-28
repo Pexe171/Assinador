@@ -13,6 +13,15 @@ Este repositório está sendo preparado para receber o novo ecossistema do Assin
 2. **Cliente desktop WPF:** interface rica para os times operacionais e administrativos acompanharem envios, retornos, históricos e configurações avançadas.
    * A mesma API REST permitirá futuramente um **cliente web** em React, sem duplicar regras.
 
+## Diretrizes de UI
+
+O cliente WPF já conta com tokens de design consolidados em `src/Client.Wpf/Resources/DesignTokens.xaml`, garantindo consistência visual:
+
+* **Tipografia:** Segoe UI como base com hierarquia Display 24/700, H1 20/700, H2 18/600, corpo 14/400, small 12/400 e Cascadia Mono 12/400 para códigos. Line height proporcional em 1.4.
+* **Espaçamento:** escala de 4, 8, 12, 16, 24 e 32 px aplicada a paddings e margens principais.
+* **Raios e sombras:** raios padronizados (4 pequeno, 8 padrão, 12 cards/diálogos) e sombras DPI-safe para superfícies.
+* **Acessibilidade:** foco visível com halo azul (#0D6EFD) de 2 px e borda interna branca de 1 px para todos os controles interativos.
+
 ## Módulos e Responsabilidades
 
 | Projeto | Responsabilidade | Observações |
