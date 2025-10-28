@@ -1,5 +1,6 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using UniversalMailer.Core.Mail.Contracts;
 using UniversalMailer.Core.Returns.Models;
 using UniversalMailer.Core.Returns.Processing;
 using UniversalMailer.Mail.Adapters.Common;

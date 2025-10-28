@@ -2,9 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using UniversalMailer.Api.Infrastructure;
 using UniversalMailer.Api.Security;
 using UniversalMailer.Core.Mail.Contracts;
-using UniversalMailer.Core.Mail.Models;
 using UniversalMailer.Mail.Adapters.Common;
 using UniversalMailer.Persistence.Db;
+using MailAccountModel = UniversalMailer.Core.Mail.Models.MailAccount;
 
 namespace UniversalMailer.Api.Services;
 
@@ -53,10 +53,10 @@ public sealed class DispatchContextFactory
             ? account.Address
             : account.DisplayName;
 
-        var domainAccount = new MailAccount(account.AccountId, displayName);
+        var domainAccount = new MailAccountModel(account.AccountId, displayName);
 
         return new DispatchContext(domainAccount, provider);
     }
 }
 
-public sealed record DispatchContext(MailAccount Account, IMailProvider Provider);
+public sealed record DispatchContext(MailAccountModel Account, IMailProvider Provider);

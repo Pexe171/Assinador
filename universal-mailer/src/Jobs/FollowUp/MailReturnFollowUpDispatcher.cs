@@ -1,9 +1,11 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using UniversalMailer.Core.Mail.Contracts;
 using UniversalMailer.Core.Mail.Models;
 using UniversalMailer.Core.Returns.Contracts;
 using UniversalMailer.Core.Returns.Models;
 using UniversalMailer.Mail.Adapters.Common;
+using MailAccountModel = UniversalMailer.Core.Mail.Models.MailAccount;
 
 namespace UniversalMailer.Jobs.FollowUp;
 
@@ -29,8 +31,11 @@ public sealed class MailReturnFollowUpDispatcher : IReturnFollowUpDispatcher
         }
 
         var latest = thread.Latest;
-        var account = _accountRouter.GetAccount(latest.AccountId);
+        var providerAccount = _accountRouter.GetAccount(latest.AccountId);
         var provider = _accountRouter.ResolveProvider(latest.AccountId);
+        var account = new MailAccountModel(
+            providerAccount.AccountId,
+            providerAccount.DisplayName ?? providerAccount.Address);
 
         var to = new MailAddress(latest.Sender.Address, latest.Sender.Name);
         var envelope = new MailEnvelope(new[] { to });
@@ -46,10 +51,10 @@ public sealed class MailReturnFollowUpDispatcher : IReturnFollowUpDispatcher
                 <p>Identificamos pendências no protocolo <strong>{thread.TrackingKey}</strong> com status <strong>{latest.Status}</strong>.</p>
                 <p>Por gentileza, responda este e-mail com as informações solicitadas para concluirmos a análise.</p>
                 <p>Motivos da classificação: {reasons}.</p>
-                <p>Atenciosamente,<br/>{account.DisplayName ?? account.Address}</p>
-              </body>
-            </html>
-            """;
+                <p>Atenciosamente,<br/>{providerAccount.DisplayName ?? providerAccount.Address}</p>
+            </body>
+        </html>
+        """;
 
         var content = new MailContent(subject, htmlBody);
         var request = new MailSendRequest(account, envelope, content, thread.TrackingKey);
