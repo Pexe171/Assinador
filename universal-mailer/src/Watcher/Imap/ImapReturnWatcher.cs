@@ -45,7 +45,7 @@ public sealed class ImapReturnWatcher
 
             var account = _accountRouter.GetAccount(accountId);
             var since = GetSince(accountId);
-            var request = new ListInboxRequest(account, since, unreadOnly: true);
+            var request = new ListInboxRequest(account, since, UnreadOnly: true);
             var messages = await _imapClient.ListInboxAsync(request, cancellationToken).ConfigureAwait(false);
 
             if (messages.Count == 0)

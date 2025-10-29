@@ -192,12 +192,12 @@ emails.MapPost("/send", async Task<Results<Ok<SendEmailResponse>, BadRequest<IDi
 {
     if (request is null)
     {
-        return TypedResults.BadRequest(new Dictionary<string, string> { ["erro"] = "Payload inválido." });
+        return TypedResults.BadRequest<IDictionary<string, string>>(new Dictionary<string, string> { ["erro"] = "Payload inválido." });
     }
 
     if (request.Para.Count == 0)
     {
-        return TypedResults.BadRequest(new Dictionary<string, string> { ["erro"] = "Informe ao menos um destinatário em 'para'." });
+        return TypedResults.BadRequest<IDictionary<string, string>>(new Dictionary<string, string> { ["erro"] = "Informe ao menos um destinatário em 'para'." });
     }
 
     try
@@ -228,7 +228,7 @@ emails.MapPost("/send", async Task<Results<Ok<SendEmailResponse>, BadRequest<IDi
     }
     catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
     {
-        return TypedResults.BadRequest(new Dictionary<string, string> { ["erro"] = ex.Message });
+        return TypedResults.BadRequest<IDictionary<string, string>>(new Dictionary<string, string> { ["erro"] = ex.Message });
     }
 });
 
@@ -360,13 +360,13 @@ templates.MapPost("/{key}", async Task<Results<Created<TemplateResponse>, BadReq
 {
     if (string.IsNullOrWhiteSpace(key))
     {
-        return TypedResults.BadRequest(new Dictionary<string, string> { ["erro"] = "A chave do template é obrigatória." });
+        return TypedResults.BadRequest<IDictionary<string, string>>(new Dictionary<string, string> { ["erro"] = "A chave do template é obrigatória." });
     }
 
     var exists = await db.Templates.AnyAsync(entity => entity.Key == key, cancellationToken).ConfigureAwait(false);
     if (exists)
     {
-        return TypedResults.BadRequest(new Dictionary<string, string> { ["erro"] = "Já existe um template com essa chave." });
+        return TypedResults.BadRequest<IDictionary<string, string>>(new Dictionary<string, string> { ["erro"] = "Já existe um template com essa chave." });
     }
 
     var now = DateTimeOffset.UtcNow;
@@ -474,13 +474,13 @@ providers.MapPost("/", async Task<Results<Created<ProviderResponse>, BadRequest<
 {
     if (string.IsNullOrWhiteSpace(request.Name))
     {
-        return TypedResults.BadRequest(new Dictionary<string, string> { ["erro"] = "O nome interno do provedor é obrigatório." });
+        return TypedResults.BadRequest<IDictionary<string, string>>(new Dictionary<string, string> { ["erro"] = "O nome interno do provedor é obrigatório." });
     }
 
     var exists = await db.MailProviders.AnyAsync(provider => provider.Name == request.Name, cancellationToken).ConfigureAwait(false);
     if (exists)
     {
-        return TypedResults.BadRequest(new Dictionary<string, string> { ["erro"] = "Já existe um provedor com esse nome interno." });
+        return TypedResults.BadRequest<IDictionary<string, string>>(new Dictionary<string, string> { ["erro"] = "Já existe um provedor com esse nome interno." });
     }
 
     ValidateOAuthOnly(request.Tipo, request.Configuracoes);
@@ -602,7 +602,7 @@ static void EnsureOAuthSettings(MailProviderType type, IReadOnlyDictionary<strin
         Require("refreshToken");
     }
 
-    static void Require(string key)
+    void Require(string key)
     {
         if (!settings.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value))
         {
