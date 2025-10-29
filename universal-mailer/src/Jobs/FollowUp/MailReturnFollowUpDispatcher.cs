@@ -6,6 +6,9 @@ using UniversalMailer.Core.Returns.Models;
 using UniversalMailer.Mail.Adapters.Common;
 using MailAccountModel = UniversalMailer.Core.Mail.Models.MailAccount;
 using MailEnvelopeModel = UniversalMailer.Core.Mail.Models.MailEnvelope;
+using MailAddressModel = UniversalMailer.Core.Mail.Models.MailAddress;
+using MailContentModel = UniversalMailer.Core.Mail.Models.MailContent;
+using MailSendRequestModel = UniversalMailer.Core.Mail.Models.MailSendRequest;
 
 namespace UniversalMailer.Jobs.FollowUp;
 
@@ -37,7 +40,7 @@ public sealed class MailReturnFollowUpDispatcher : IReturnFollowUpDispatcher
             providerAccount.AccountId,
             providerAccount.DisplayName ?? providerAccount.Address);
 
-        var to = new MailAddress(latest.Sender.Address, latest.Sender.Name);
+        var to = new MailAddressModel(latest.Sender.Address, latest.Sender.Name);
         var envelope = new MailEnvelopeModel(new[] { to });
 
         var subject = $"[Follow-up] {thread.TrackingKey} - pendência de documentação";
@@ -56,8 +59,8 @@ public sealed class MailReturnFollowUpDispatcher : IReturnFollowUpDispatcher
         </html>
         """;
 
-        var content = new MailContent(subject, htmlBody);
-        var request = new MailSendRequest(account, envelope, content, thread.TrackingKey);
+        var content = new MailContentModel(subject, htmlBody);
+        var request = new MailSendRequestModel(account, envelope, content, thread.TrackingKey);
 
         var result = await provider.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
