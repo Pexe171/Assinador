@@ -1,11 +1,11 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using UniversalMailer.Core.Mail.Contracts;
-using UniversalMailer.Core.Mail.Models;
 using UniversalMailer.Core.Returns.Contracts;
 using UniversalMailer.Core.Returns.Models;
 using UniversalMailer.Mail.Adapters.Common;
 using MailAccountModel = UniversalMailer.Core.Mail.Models.MailAccount;
+using MailEnvelopeModel = UniversalMailer.Core.Mail.Models.MailEnvelope;
 
 namespace UniversalMailer.Jobs.FollowUp;
 
@@ -38,7 +38,7 @@ public sealed class MailReturnFollowUpDispatcher : IReturnFollowUpDispatcher
             providerAccount.DisplayName ?? providerAccount.Address);
 
         var to = new MailAddress(latest.Sender.Address, latest.Sender.Name);
-        var envelope = new MailEnvelope(new[] { to });
+        var envelope = new MailEnvelopeModel(new[] { to });
 
         var subject = $"[Follow-up] {thread.TrackingKey} - pendência de documentação";
         var reasons = latest.Classification.Reasons.Any()
