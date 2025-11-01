@@ -45,7 +45,7 @@ O cliente WPF já conta com tokens de design consolidados em `src/Client.Wpf/Res
 
 O ecossistema agora conta com uma API REST (`src/Api`) construída sobre **ASP.NET Minimal APIs** e um banco relacional gerenciado via **EF Core**. Os principais pontos:
 
-* **Persistência:** SQLite por padrão (`Database:Provider = "sqlite"`), com suporte imediato a PostgreSQL bastando alterar `appsettings.json` para `"postgres"` e apontar `ConnectionString`. As migrations vivem em `src/Persistence/Migrations` e garantem o mesmo schema em ambos os bancos.
+* **Persistência:** SQLite por padrão (`Database:Provider = "sqlite"`), com suporte imediato a PostgreSQL bastando alterar `appsettings.json` para `"postgres"` e apontar `ConnectionString`. As migrations vivem em `src/Persistence/Migrations` e garantem o mesmo schema em ambos os bancos. Os arquivos `.db` de desenvolvimento não ficam mais versionados — gere um banco novo com `dotnet ef database update` ao iniciar o projeto.
 * **Envio de e-mails:** endpoint `POST /emails/send` processa templates armazenados no banco, renderiza variáveis e dispara via provedor cadastrado (FileSystem por padrão).
 * **Consultas:**
   * `GET /emails/{protocolo}` recupera detalhes de um envio.
@@ -74,5 +74,5 @@ Para detalhes adicionais e decisões de design, consulte o documento em `docs/bl
 ## Segurança e credenciais
 
 * **OAuth2 obrigatório** para adapters do Microsoft Graph e da Gmail API. Qualquer configuração que tente usar senhas em texto plano é rejeitada automaticamente.
-* **Proteção de segredos** via DPAPI armazenada no **Windows Credential Manager**, garantindo que `clientSecret`, `refreshToken` e campos equivalentes não fiquem expostos no banco.
+* **Proteção de segredos** via DPAPI armazenada no **Windows Credential Manager**, garantindo que `clientSecret`, `refreshToken` e campos equivalentes não fiquem expostos no banco. Artefatos legados de templates Outlook (`*.oft` antigos) e PDFs internos foram removidos para simplificar o repositório.
 * **Whitelist para cópia (CC):** apenas domínios listados em `config/whitelist_domains.txt` (ou no bloco `Security:Recipients` do `appsettings.json`) podem receber cópia, com deduplicação automática entre CC e CCO.

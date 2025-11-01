@@ -1,0 +1,26 @@
+# Build artifacts
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userprefs
+
+# Runtime data
+universal-mailer/db/*.db
+universal-mailer/logs/
+universal-mailer/backup/
+
+# Temporary files
+*.tmp
+*.log
+
+# IDE directories
+.vs/
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
